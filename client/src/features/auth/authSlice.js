@@ -7,7 +7,12 @@ export const login = createAsyncThunk('auth/login', async (credentials, { reject
     const res = await api.post('/auth/login', credentials);
     return res.data.data;
   } catch (err) {
-    return rejectWithValue(err.response?.data?.error || { message: 'Login failed' });
+    const message =
+      err.response?.data?.error?.message ||
+      err.response?.data?.message ||
+      (err.code === 'ERR_NETWORK' ? 'Network Error: Cannot reach API server' : err.message) ||
+      'Login failed';
+    return rejectWithValue({ message, code: err.response?.data?.error?.code });
   }
 });
 

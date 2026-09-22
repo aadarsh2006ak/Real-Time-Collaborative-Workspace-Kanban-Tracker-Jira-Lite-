@@ -26,7 +26,9 @@ async function getOnlineUsers(io, projectId) {
 function initSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: (origin, callback) => {
+        callback(null, origin || true);
+      },
       credentials: true,
     },
     pingInterval: 25000,

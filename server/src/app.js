@@ -15,12 +15,37 @@ const { notFound, errorHandler } = require('./middlewares/error');
 const app = express();
 
 // Security, Compression and Parsing Middlewares
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(compression());
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (
+    origin === env.CLIENT_URL ||
+    origin.endsWith('.onrender.com') ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1')
+  ) {
+    return true;
+  }
+  return true;
+};
+
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        return callback(null, origin || true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-socket-id', 'x-requested-with'],
   })
 );
 app.use(express.json({ limit: '1mb' }));
