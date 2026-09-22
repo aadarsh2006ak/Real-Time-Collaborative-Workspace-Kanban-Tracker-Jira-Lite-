@@ -1,0 +1,45 @@
+{
+  "name": "jira-lite-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jira-Lite - Real-Time Collaborative Kanban Tracker (MERN + Socket.io + Redux Toolkit)",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue.bold,magenta.bold\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "lint": "npm run lint --workspace=server && npm run lint --workspace=client",
+    "test": "npm run test --workspace=server && npm run test --workspace=client",
+    "test:server": "npm run test --workspace=server",
+    "test:client": "npm run test --workspace=client",
+    "build": "npm run build --workspace=client",
+    "prepare": "husky install || true"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.5.2"
+  },
+  "lint-staged": {
+    "server/**/*.js": [
+      "prettier --write"
+    ],
+    "client/**/*.{js,jsx,css}": [
+      "prettier --write"
+    ]
+  },
+  "keywords": [
+    "kanban",
+    "jira-lite",
+    "realtime",
+    "socketio",
+    "redux-toolkit",
+    "mern"
+  ],
+  "author": "Jira-Lite Team",
+  "license": "MIT"
+}

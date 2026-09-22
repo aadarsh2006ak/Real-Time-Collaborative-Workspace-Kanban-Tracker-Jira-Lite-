@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, "feat/*", "fix/*"]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Lint & Test Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [server, client]
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Code Quality Checks (Lint)
+        run: npm run lint --if-present
+
+      - name: Run Test Suite
+        run: npm test --if-present
+
+      - name: Build Check
+        run: npm run build --if-present
