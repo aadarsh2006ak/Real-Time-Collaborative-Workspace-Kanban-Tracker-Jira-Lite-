@@ -8,6 +8,7 @@ const initialState = {
     assignee: null,
     label: null,
     priority: null,
+    isOverdue: null,
   },
   toasts: [],
 };
@@ -21,7 +22,10 @@ export const uiSlice = createSlice({
       state.filters[key] = value;
     },
     clearFilters: (state) => {
-      state.filters = { q: '', assignee: null, label: null, priority: null };
+      state.filters = { q: '', assignee: null, label: null, priority: null, isOverdue: null };
+    },
+    resetFilters: (state) => {
+      state.filters = { q: '', assignee: null, label: null, priority: null, isOverdue: null };
     },
     openTaskModal: (state, action) => {
       state.taskModalId = action.payload;
@@ -42,6 +46,7 @@ export const uiSlice = createSlice({
 export const {
   setFilter,
   clearFilters,
+  resetFilters,
   openTaskModal,
   closeTaskModal,
   addToast,

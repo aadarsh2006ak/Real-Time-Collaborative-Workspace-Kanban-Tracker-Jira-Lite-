@@ -3,16 +3,28 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { Search, Plus, Loader2, X } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Loader2,
+  X,
+  Settings,
+  BarChart2,
+  FilterX,
+  Clock,
+  Users,
+} from 'lucide-react';
 import { fetchProjectById, selectProjectById } from '../projects/projectsSlice';
 import { fetchTasks, createTask, moveTask } from '../tasks/tasksSlice';
 import { selectTasksByColumn } from '../tasks/tasksSelectors';
-import { setFilter, addToast } from '../ui/uiSlice';
+import { setFilter, resetFilters, addToast } from '../ui/uiSlice';
 import { useProjectSocket } from '../../hooks/useProjectSocket';
 import { calcPosition } from '../../lib/position';
 import Navbar from '../../components/Navbar';
 import Column from './Column';
 import TaskModal from '../tasks/TaskModal';
+import ProjectSettingsModal from '../projects/ProjectSettingsModal';
+import AnalyticsModal from '../analytics/AnalyticsModal';
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -32,6 +44,10 @@ export default function BoardPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+
+  // Quick task creation form states
   const [targetColumnId, setTargetColumnId] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskPriority, setTaskPriority] = useState('medium');
@@ -118,6 +134,10 @@ export default function BoardPage() {
     });
   };
 
+  const hasActiveFilters = Boolean(
+    filters.q || filters.priority || filters.assignee || filters.isOverdue
+  );
+
   if (projectStatus === 'loading' && !project) {
     return (
       <div className="min-h-screen bg-[#070b14] flex flex-col">
@@ -137,7 +157,7 @@ export default function BoardPage() {
       <Navbar currentProject={project} />
 
       {/* Board Header & Filter Controls */}
-      <div className="border-b border-slate-800/80 bg-slate-900/40 px-4 sm:px-6 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-slate-800/80 bg-slate-900/40 px-4 sm:px-6 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Left: Project title & Members */}
         <div className="flex items-center gap-4">
           <div>
@@ -170,8 +190,8 @@ export default function BoardPage() {
           </div>
         </div>
 
-        {/* Right: Search & Filter Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
+        {/* Right: Search, Filter Controls & Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Search Bar */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -179,8 +199,8 @@ export default function BoardPage() {
               type="text"
               value={filters.q || ''}
               onChange={(e) => dispatch(setFilter({ key: 'q', value: e.target.value }))}
-              placeholder="Search cards..."
-              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 w-44 sm:w-56"
+              placeholder="Search cards (key, title)..."
+              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 w-36 sm:w-48"
             />
           </div>
 
@@ -190,20 +210,90 @@ export default function BoardPage() {
             onChange={(e) =>
               dispatch(setFilter({ key: 'priority', value: e.target.value || null }))
             }
-            className="px-3 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
+            className="px-2.5 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
           >
-            <option value="">All Priorities</option>
+            <option value="">Priorities</option>
             <option value="urgent">Urgent</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
 
+          {/* Assignee Filter */}
+          <select
+            value={filters.assignee || ''}
+            onChange={(e) =>
+              dispatch(setFilter({ key: 'assignee', value: e.target.value || null }))
+            }
+            className="px-2.5 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-xs text-slate-300 focus:outline-none focus:border-blue-500 max-w-[130px]"
+          >
+            <option value="">Assignees</option>
+            {project?.members?.map((m) => (
+              <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
+                {m.user?.name || 'Member'}
+              </option>
+            ))}
+          </select>
+
+          {/* Overdue Quick Filter Button */}
+          <button
+            onClick={() =>
+              dispatch(
+                setFilter({
+                  key: 'isOverdue',
+                  value: filters.isOverdue ? null : true,
+                })
+              )
+            }
+            title="Toggle overdue tasks filter"
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1 transition-all ${
+              filters.isOverdue
+                ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                : 'bg-slate-850 border-slate-750 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Overdue</span>
+          </button>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <button
+              onClick={() => dispatch(resetFilters())}
+              title="Reset all filters"
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-rose-300 border border-slate-700 transition-colors"
+            >
+              <FilterX className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <div className="h-5 w-px bg-slate-800 mx-1 hidden sm:block" />
+
+          {/* Analytics Button */}
+          <button
+            onClick={() => setIsAnalyticsOpen(true)}
+            title="Board Metrics & Health"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all"
+          >
+            <BarChart2 className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">Analytics</span>
+          </button>
+
+          {/* Settings Button */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            title="Project Settings & Columns"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all"
+          >
+            <Settings className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+
           {/* New Task Button */}
           {columns.length > 0 && (
             <button
               onClick={() => handleOpenAddTask(columns[0]._id)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create Task</span>
@@ -260,7 +350,7 @@ export default function BoardPage() {
                   required
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="e.g. Implement WebSocket reconnection strategy"
+                  placeholder="e.g. Implement search indexing"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -342,6 +432,20 @@ export default function BoardPage() {
           setIsTaskModalOpen(false);
           setSelectedTask(null);
         }}
+      />
+
+      {/* Project Settings Modal */}
+      <ProjectSettingsModal
+        project={project}
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Board Analytics Modal */}
+      <AnalyticsModal
+        projectId={projectId}
+        isOpen={isAnalyticsOpen}
+        onClose={() => setIsAnalyticsOpen(false)}
       />
     </div>
   );

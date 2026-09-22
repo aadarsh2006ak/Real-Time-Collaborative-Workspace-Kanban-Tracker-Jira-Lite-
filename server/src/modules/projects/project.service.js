@@ -250,6 +250,123 @@ async function deleteColumn(projectId, columnId) {
   return { message: 'Column deleted successfully' };
 }
 
+/**
+ * Calculates board health metrics, WIP adherence, cycle time, and workload distribution
+ */
+async function getProjectAnalytics(projectId) {
+  const project = await Project.findById(projectId)
+    .populate('members.user', 'name email avatarUrl')
+    .lean();
+
+  if (!project) {
+    throw new AppError(404, 'Project not found', 'NOT_FOUND');
+  }
+
+  const tasks = await Task.find({ project: projectId, deletedAt: null })
+    .populate('assignees', 'name email avatarUrl')
+    .lean();
+
+  const totalTasks = tasks.length;
+  const lastCol = project.columns[project.columns.length - 1];
+  const doneColId = lastCol ? String(lastCol._id) : null;
+
+  // 1. Column Health & WIP Compliance
+  const columnHealth = project.columns.map((col) => {
+    const colTaskCount = tasks.filter((t) => String(t.columnId) === String(col._id)).length;
+    const isExceeded = col.wipLimit > 0 && colTaskCount > col.wipLimit;
+    const isAtLimit = col.wipLimit > 0 && colTaskCount === col.wipLimit;
+    const utilization = col.wipLimit > 0 ? Math.round((colTaskCount / col.wipLimit) * 100) : null;
+
+    return {
+      columnId: col._id,
+      name: col.name,
+      wipLimit: col.wipLimit,
+      taskCount: colTaskCount,
+      isExceeded,
+      isAtLimit,
+      utilization,
+    };
+  });
+
+  // 2. Completed vs Active Tasks
+  const completedTasks = doneColId
+    ? tasks.filter((t) => String(t.columnId) === doneColId).length
+    : 0;
+  const activeTasks = totalTasks - completedTasks;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // 3. Overdue Tasks
+  const now = new Date();
+  const overdueTasks = tasks.filter(
+    (t) => t.dueDate && new Date(t.dueDate) < now && String(t.columnId) !== doneColId
+  ).length;
+
+  // 4. Priority Breakdown
+  const priorityBreakdown = {
+    urgent: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+  };
+  tasks.forEach((t) => {
+    if (priorityBreakdown[t.priority] !== undefined) {
+      priorityBreakdown[t.priority] += 1;
+    }
+  });
+
+  // 5. Assignee Workload Distribution
+  const workloadMap = new Map();
+  let unassignedCount = 0;
+
+  // Initialize with all project members
+  (project.members || []).forEach((m) => {
+    if (m.user) {
+      workloadMap.set(String(m.user._id), {
+        userId: m.user._id,
+        name: m.user.name,
+        email: m.user.email,
+        taskCount: 0,
+      });
+    }
+  });
+
+  tasks.forEach((t) => {
+    if (!t.assignees || t.assignees.length === 0) {
+      unassignedCount += 1;
+    } else {
+      t.assignees.forEach((a) => {
+        const key = String(a._id || a);
+        if (workloadMap.has(key)) {
+          workloadMap.get(key).taskCount += 1;
+        } else {
+          workloadMap.set(key, {
+            userId: a._id || a,
+            name: a.name || 'Member',
+            email: a.email || '',
+            taskCount: 1,
+          });
+        }
+      });
+    }
+  });
+
+  const assigneeWorkload = Array.from(workloadMap.values());
+
+  return {
+    projectId,
+    projectName: project.name,
+    totalTasks,
+    activeTasks,
+    completedTasks,
+    completionRate,
+    overdueTasks,
+    columnHealth,
+    priorityBreakdown,
+    assigneeWorkload,
+    unassignedCount,
+  };
+}
+
 module.exports = {
   createProject,
   getUserProjects,
@@ -262,4 +379,5 @@ module.exports = {
   addColumn,
   updateColumn,
   deleteColumn,
+  getProjectAnalytics,
 };

@@ -77,21 +77,68 @@ async function createTask(projectId, taskData, actorId, req = null) {
 }
 
 /**
- * Fetch all tasks for a project with filters and text search
+ * Fetch all tasks for a project with advanced multi-filters and text search
  */
 async function getProjectTasks(projectId, filters = {}) {
   const query = { project: projectId, deletedAt: null };
 
+  // 1. Column Filter
   if (filters.columnId) query.columnId = filters.columnId;
-  if (filters.priority) query.priority = filters.priority;
-  if (filters.assignee) query.assignees = filters.assignee;
-  if (filters.label) query.labels = filters.label;
 
-  if (filters.q) {
+  // 2. Priority Filter (Single or Array / Comma-separated)
+  if (filters.priority) {
+    const priorities = Array.isArray(filters.priority)
+      ? filters.priority
+      : filters.priority.split(',').map((p) => p.trim()).filter(Boolean);
+    if (priorities.length === 1) {
+      query.priority = priorities[0];
+    } else if (priorities.length > 1) {
+      query.priority = { $in: priorities };
+    }
+  }
+
+  // 3. Assignees Filter (Single or Array / Comma-separated)
+  const rawAssignees = filters.assignees || filters.assignee;
+  if (rawAssignees) {
+    const assigneeList = Array.isArray(rawAssignees)
+      ? rawAssignees
+      : rawAssignees.split(',').map((a) => a.trim()).filter(Boolean);
+    if (assigneeList.length === 1) {
+      query.assignees = assigneeList[0];
+    } else if (assigneeList.length > 1) {
+      query.assignees = { $in: assigneeList };
+    }
+  }
+
+  // 4. Labels Filter (Single or Array / Comma-separated)
+  const rawLabels = filters.labels || filters.label;
+  if (rawLabels) {
+    const labelList = Array.isArray(rawLabels)
+      ? rawLabels
+      : rawLabels.split(',').map((l) => l.trim()).filter(Boolean);
+    if (labelList.length === 1) {
+      query.labels = labelList[0];
+    } else if (labelList.length > 1) {
+      query.labels = { $in: labelList };
+    }
+  }
+
+  // 5. Overdue and Date Range Filters
+  if (filters.isOverdue === true || filters.isOverdue === 'true') {
+    query.dueDate = { $lt: new Date() };
+  } else if (filters.dueBefore || filters.dueAfter) {
+    query.dueDate = {};
+    if (filters.dueBefore) query.dueDate.$lte = new Date(filters.dueBefore);
+    if (filters.dueAfter) query.dueDate.$gte = new Date(filters.dueAfter);
+  }
+
+  // 6. Text Search across Title, Description, and Key
+  if (filters.q && filters.q.trim()) {
+    const term = filters.q.trim();
     query.$or = [
-      { title: { $regex: filters.q, $options: 'i' } },
-      { description: { $regex: filters.q, $options: 'i' } },
-      { key: { $regex: filters.q, $options: 'i' } },
+      { title: { $regex: term, $options: 'i' } },
+      { description: { $regex: term, $options: 'i' } },
+      { key: { $regex: term, $options: 'i' } },
     ];
   }
 

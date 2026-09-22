@@ -8,6 +8,7 @@ import presenceReducer from '../features/presence/presenceSlice';
 import commentsReducer from '../features/comments/commentsSlice';
 import activityReducer from '../features/activity/activitySlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
+import analyticsReducer from '../features/analytics/analyticsSlice';
 import { injectStore } from '../lib/api';
 
 export const store = configureStore({
@@ -20,6 +21,7 @@ export const store = configureStore({
     comments: commentsReducer,
     activity: activityReducer,
     notifications: notificationsReducer,
+    analytics: analyticsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

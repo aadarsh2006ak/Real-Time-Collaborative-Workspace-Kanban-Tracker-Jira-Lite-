@@ -24,6 +24,7 @@ router.post('/', validate(createProjectSchema), projectController.createProject)
 
 // Project Item endpoints
 router.get('/:projectId', requireRole('viewer'), projectController.getProject);
+router.get('/:projectId/analytics', requireRole('viewer'), projectController.getProjectAnalytics);
 router.patch('/:projectId', requireRole('admin'), validate(updateProjectSchema), projectController.updateProject);
 router.delete('/:projectId', requireRole('owner'), projectController.deleteProject);
 

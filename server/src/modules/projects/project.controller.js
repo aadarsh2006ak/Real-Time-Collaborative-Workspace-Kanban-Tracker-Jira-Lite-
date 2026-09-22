@@ -149,3 +149,15 @@ exports.deleteColumn = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getProjectAnalytics = async (req, res, next) => {
+  try {
+    const analytics = await projectService.getProjectAnalytics(req.params.projectId);
+    res.status(200).json({
+      success: true,
+      data: { analytics },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -15,6 +15,9 @@ import {
   Send,
   Edit2,
   Check,
+  Tag,
+  Users,
+  Plus,
 } from 'lucide-react';
 import { updateTask, deleteTask } from './tasksSlice';
 import {
@@ -41,6 +44,8 @@ function formatTimeAgo(dateString) {
   return `${diffDay}d ago`;
 }
 
+const PRESET_LABELS = ['bug', 'feature', 'frontend', 'backend', 'api', 'security', 'design', 'p1'];
+
 export default function TaskModal({ task, project, isOpen, onClose }) {
   const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.user);
@@ -55,6 +60,9 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
   const [priority, setPriority] = useState('medium');
   const [columnId, setColumnId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [labels, setLabels] = useState([]);
+  const [newLabelInput, setNewLabelInput] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState([]);
   const [activeTab, setActiveTab] = useState('details');
   const [isSaving, setIsSaving] = useState(false);
   const [conflictError, setConflictError] = useState(null);
@@ -72,6 +80,10 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
       setPriority(task.priority || 'medium');
       setColumnId(task.columnId || '');
       setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+      setLabels(task.labels || []);
+      setAssigneeIds(
+        (task.assignees || []).map((a) => (typeof a === 'object' ? a._id : a))
+      );
       setConflictError(null);
     }
   }, [task]);
@@ -99,6 +111,8 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
       priority,
       columnId,
       dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      labels,
+      assignees: assigneeIds,
       version: task.version, // OCC Concurrency Control
     };
 
@@ -133,6 +147,26 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
         dispatch(addToast({ message: `Task ${task.key} deleted`, type: 'info' }));
         onClose();
       }
+    }
+  };
+
+  const handleAddLabel = (labelToAdd) => {
+    const trimmed = labelToAdd.trim().toLowerCase();
+    if (trimmed && !labels.includes(trimmed)) {
+      setLabels([...labels, trimmed]);
+      setNewLabelInput('');
+    }
+  };
+
+  const handleRemoveLabel = (labelToRemove) => {
+    setLabels(labels.filter((l) => l !== labelToRemove));
+  };
+
+  const handleToggleAssignee = (userId) => {
+    if (assigneeIds.includes(userId)) {
+      setAssigneeIds(assigneeIds.filter((id) => id !== userId));
+    } else {
+      setAssigneeIds([...assigneeIds, userId]);
     }
   };
 
@@ -179,6 +213,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
   };
 
   const columns = project?.columns || [];
+  const projectMembers = project?.members || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
@@ -331,12 +366,107 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                 </div>
               </div>
 
+              {/* Assignees Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-slate-400" />
+                  Assignees
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {projectMembers.map((m) => {
+                    const memberId = m.user?._id || m.user;
+                    const isAssigned = assigneeIds.includes(memberId);
+                    return (
+                      <button
+                        type="button"
+                        key={memberId}
+                        onClick={() => handleToggleAssignee(memberId)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-2 transition-all ${
+                          isAssigned
+                            ? 'bg-blue-600/20 border-blue-500 text-blue-300 ring-1 ring-blue-500/50'
+                            : 'bg-slate-850 border-slate-750 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[9px] font-bold flex items-center justify-center">
+                          {m.user?.name ? m.user.name[0].toUpperCase() : 'M'}
+                        </div>
+                        <span>{m.user?.name || 'Member'}</span>
+                        {isAssigned && <Check className="w-3 h-3 text-blue-400" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Labels Manager */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-slate-400" />
+                  Labels & Tags
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  {labels.map((lbl) => (
+                    <span
+                      key={lbl}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20 text-xs font-medium"
+                    >
+                      <span>#{lbl}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLabel(lbl)}
+                        className="hover:text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add custom label (press Enter)..."
+                    value={newLabelInput}
+                    onChange={(e) => setNewLabelInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddLabel(newLabelInput);
+                      }
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddLabel(newLabelInput)}
+                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Preset Badges */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[10px] text-slate-500">Presets:</span>
+                  {PRESET_LABELS.filter((p) => !labels.includes(p)).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleAddLabel(preset)}
+                      className="px-2 py-0.5 rounded-md bg-slate-850 hover:bg-slate-800 border border-slate-750 text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      +{preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Description
                 </label>
                 <textarea
-                  rows={5}
+                  rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add detailed task description, acceptance criteria, or notes..."
