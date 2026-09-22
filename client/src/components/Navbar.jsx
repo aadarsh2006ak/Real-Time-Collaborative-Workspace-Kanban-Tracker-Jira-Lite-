@@ -12,6 +12,9 @@ import {
   MessageSquare,
   UserCheck,
   Clock,
+  Sun,
+  Moon,
+  Command,
 } from 'lucide-react';
 import { loggedOut } from '../features/auth/authSlice';
 import {
@@ -19,6 +22,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '../features/notifications/notificationsSlice';
+import { toggleTheme, setShortcutsModalOpen } from '../features/ui/uiSlice';
 import { api } from '../lib/api';
 
 function formatTimeAgo(dateString) {
@@ -39,6 +43,7 @@ export default function Navbar({ currentProject = null }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const theme = useSelector((state) => state.ui.theme);
   const { items: notifications, unreadCount } = useSelector(
     (state) => state.notifications
   );
@@ -122,15 +127,33 @@ export default function Navbar({ currentProject = null }) {
           )}
         </div>
 
-        {/* Right: User Profile & Actions */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">
-            <Sparkles className="w-3 h-3" />
-            <span>v0.8 Collab Engine</span>
-          </div>
+        {/* Right: Actions, Theme Switcher & User Profile */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Shortcuts Guide Button */}
+          <button
+            onClick={() => dispatch(setShortcutsModalOpen(true))}
+            title="Keyboard Shortcuts (?)"
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-white transition-all hidden sm:flex items-center gap-1.5 text-xs font-medium"
+          >
+            <Command className="w-3.5 h-3.5" />
+            <span className="font-mono text-[11px] text-slate-400">?</span>
+          </button>
+
+          {/* Theme Switcher Toggle */}
+          <button
+            onClick={() => dispatch(toggleTheme())}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode (T)`}
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-blue-400" />
+            )}
+          </button>
 
           {user && (
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3 pl-1 border-l border-slate-800">
               {/* Notification Bell Dropdown */}
               <div className="relative" ref={notifRef}>
                 <button

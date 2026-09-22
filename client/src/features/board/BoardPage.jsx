@@ -1,3 +1,4 @@
+// client/src/features/board/BoardPage.jsx
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -13,10 +14,7 @@ import {
   Clock,
   Download,
   CheckSquare,
-  Square,
   Trash2,
-  ArrowRight,
-  Sparkles,
 } from 'lucide-react';
 import { fetchProjectById, selectProjectById } from '../projects/projectsSlice';
 import {
@@ -30,6 +28,7 @@ import {
 import { selectTasksByColumn, selectAllTasks } from '../tasks/tasksSelectors';
 import { setFilter, resetFilters, addToast } from '../ui/uiSlice';
 import { useProjectSocket } from '../../hooks/useProjectSocket';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { calcPosition } from '../../lib/position';
 import Navbar from '../../components/Navbar';
 import Column from './Column';
@@ -163,10 +162,12 @@ export default function BoardPage() {
     }
   };
 
-  const handleOpenAddTask = (colId) => {
-    setTargetColumnId(colId);
+  const handleOpenAddTask = useCallback((colId) => {
+    const columnsList = project?.columns || [];
+    const defaultCol = colId || (columnsList[0] ? columnsList[0]._id : '');
+    setTargetColumnId(defaultCol);
     setIsCreateModalOpen(true);
-  };
+  }, [project]);
 
   const handleTaskClick = useCallback((task) => {
     setSelectedTask(task);
@@ -223,7 +224,7 @@ export default function BoardPage() {
         toColumnId: destination.droppableId,
         beforeId: before?._id || null,
         afterId: after?._id || null,
-        position: newPosition, // Used immediately by moveTask.pending for 0ms optimistic UI
+        position: newPosition,
       })
     ).then((actionResult) => {
       if (actionResult.meta.requestStatus === 'rejected') {
@@ -236,6 +237,30 @@ export default function BoardPage() {
       }
     });
   };
+
+  const columns = project?.columns || [];
+
+  // Register Global Keyboard Shortcuts
+  useKeyboardShortcuts({
+    onNewTask: () => {
+      if (columns.length > 0) handleOpenAddTask(columns[0]._id);
+    },
+    onToggleSelectMode: () => {
+      setIsSelectMode((prev) => !prev);
+      setSelectedTaskIds([]);
+    },
+    onEscape: () => {
+      setIsSelectMode(false);
+      setSelectedTaskIds([]);
+      setIsCreateModalOpen(false);
+      setIsTaskModalOpen(false);
+      setIsSettingsOpen(false);
+      setIsAnalyticsOpen(false);
+      setIsImportExportOpen(false);
+    },
+    onBulkDelete: handleBulkDelete,
+    hasSelection: isSelectMode && selectedTaskIds.length > 0,
+  });
 
   const hasActiveFilters = Boolean(
     filters.q || filters.priority || filters.assignee || filters.isOverdue
@@ -252,8 +277,6 @@ export default function BoardPage() {
       </div>
     );
   }
-
-  const columns = project?.columns || [];
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white h-screen overflow-hidden relative">
@@ -295,14 +318,15 @@ export default function BoardPage() {
 
         {/* Right: Search, Filter Controls & Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Search Bar */}
+          {/* Search Bar with Keyboard Hotkey '/' */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
+              id="board-search-input"
               type="text"
               value={filters.q || ''}
               onChange={(e) => dispatch(setFilter({ key: 'q', value: e.target.value }))}
-              placeholder="Search cards (key, title)..."
+              placeholder="Search cards (/) ..."
               className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 w-36 sm:w-48"
             />
           </div>
@@ -378,7 +402,7 @@ export default function BoardPage() {
               setIsSelectMode(!isSelectMode);
               if (isSelectMode) setSelectedTaskIds([]);
             }}
-            title="Toggle multi-select mode for bulk actions"
+            title="Toggle multi-select mode (M)"
             className={`p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
               isSelectMode
                 ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'

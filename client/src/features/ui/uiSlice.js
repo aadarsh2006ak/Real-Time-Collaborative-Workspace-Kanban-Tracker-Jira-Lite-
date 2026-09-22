@@ -1,8 +1,23 @@
 // client/src/features/ui/uiSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 
+const initialTheme =
+  typeof window !== 'undefined'
+    ? localStorage.getItem('jira_theme') || 'dark'
+    : 'dark';
+
+if (typeof document !== 'undefined') {
+  if (initialTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
 const initialState = {
+  theme: initialTheme,
   taskModalId: null,
+  isShortcutsModalOpen: false,
   filters: {
     q: '',
     assignee: null,
@@ -17,6 +32,32 @@ export const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
+    toggleTheme: (state) => {
+      const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+      state.theme = nextTheme;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('jira_theme', nextTheme);
+        if (nextTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    },
+    setTheme: (state, action) => {
+      state.theme = action.payload;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('jira_theme', action.payload);
+        if (action.payload === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    },
+    setShortcutsModalOpen: (state, action) => {
+      state.isShortcutsModalOpen = action.payload;
+    },
     setFilter: (state, action) => {
       const { key, value } = action.payload;
       state.filters[key] = value;
@@ -44,6 +85,9 @@ export const uiSlice = createSlice({
 });
 
 export const {
+  toggleTheme,
+  setTheme,
+  setShortcutsModalOpen,
   setFilter,
   clearFilters,
   resetFilters,
