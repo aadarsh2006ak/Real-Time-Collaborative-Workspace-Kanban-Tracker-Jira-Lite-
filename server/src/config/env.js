@@ -12,7 +12,13 @@ const schema = z.object({
   REDIS_URL: z.string().optional(),
   JWT_ACCESS_SECRET: z.string().min(32).default('super_secret_jwt_access_key_min_32_characters_long_12345'),
   JWT_REFRESH_SECRET: z.string().min(32).default('super_secret_jwt_refresh_key_min_32_characters_long_67890'),
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  CLIENT_URL: z
+    .string()
+    .transform((val) => {
+      if (!val) return 'http://localhost:5173';
+      return val.startsWith('http://') || val.startsWith('https://') ? val : `https://${val}`;
+    })
+    .default('http://localhost:5173'),
 });
 
 const parsed = schema.safeParse(process.env);

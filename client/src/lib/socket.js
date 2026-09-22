@@ -8,7 +8,10 @@ export const getSocket = () => socket;
 export function connectSocket(getToken) {
   if (socket) return socket;
 
-  const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const serverUrl = rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
+    ? rawApiUrl
+    : `https://${rawApiUrl}`;
 
   socket = io(serverUrl, {
     auth: (cb) => {

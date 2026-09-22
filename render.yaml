@@ -18,9 +18,9 @@ services:
       - key: PORT
         value: 5000
       - key: MONGO_URI
-        sync: false # Provide your MongoDB Atlas Connection String
+        sync: false # Enter your MongoDB Atlas connection URI in Render Dashboard
       - key: REDIS_URL
-        sync: false # Optional: Upstash Redis connection string or leave empty for local memory
+        sync: false # Optional: Upstash Redis connection URI
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -36,10 +36,9 @@ services:
     name: jira-lite-client
     runtime: static
     plan: free
-    region: oregon
     rootDir: client
     buildCommand: npm install && npm run build
-    staticPublishPath: ./client/dist
+    staticPublishPath: ./dist
     routes:
       - type: rewrite
         source: /*

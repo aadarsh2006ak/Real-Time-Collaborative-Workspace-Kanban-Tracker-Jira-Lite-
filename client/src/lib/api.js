@@ -8,7 +8,12 @@ export const injectStore = (s) => {
   store = s;
 };
 
-const baseURL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1`;
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const normalizedApiUrl = rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
+  ? rawApiUrl
+  : `https://${rawApiUrl}`;
+
+const baseURL = `${normalizedApiUrl.replace(/\/$/, '')}/api/v1`;
 
 export const api = axios.create({
   baseURL,
