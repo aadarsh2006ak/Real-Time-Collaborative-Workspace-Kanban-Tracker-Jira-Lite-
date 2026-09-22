@@ -8,16 +8,15 @@ const Task = require('./modules/tasks/task.model');
 const Comment = require('./modules/comments/comment.model');
 const Activity = require('./modules/activity/activity.model');
 
-async function seed() {
-  console.log('Connecting to MongoDB at:', env.MONGO_URI);
-  await mongoose.connect(env.MONGO_URI);
-
-  console.log('Clearing existing test data...');
-  await User.deleteMany({});
-  await Project.deleteMany({});
-  await Task.deleteMany({});
-  await Comment.deleteMany({});
-  await Activity.deleteMany({});
+async function seedDatabase(options = { clear: true }) {
+  if (options.clear) {
+    console.log('Clearing existing test data...');
+    await User.deleteMany({});
+    await Project.deleteMany({});
+    await Task.deleteMany({});
+    await Comment.deleteMany({});
+    await Activity.deleteMany({});
+  }
 
   console.log('Creating demo users...');
   const passwordHash = await bcrypt.hash('Password123!', 12);
@@ -166,12 +165,28 @@ async function seed() {
   console.log('🔑 Password: Password123!');
   console.log('📁 Project:  Engineering Platform (EP)');
   console.log('===========================================\n');
-
-  await mongoose.disconnect();
-  process.exit(0);
 }
 
-seed().catch((err) => {
-  console.error('Seed Error:', err);
-  process.exit(1);
-});
+async function autoSeedIfEmpty() {
+  const userCount = await User.countDocuments();
+  if (userCount === 0) {
+    console.log('🌱 Empty database detected on startup. Automatically seeding initial demo data...');
+    await seedDatabase({ clear: false });
+  }
+}
+
+// Standalone execution
+if (require.main === module) {
+  (async () => {
+    console.log('Connecting to MongoDB at:', env.MONGO_URI);
+    await mongoose.connect(env.MONGO_URI);
+    await seedDatabase({ clear: true });
+    await mongoose.disconnect();
+    process.exit(0);
+  })().catch((err) => {
+    console.error('Seed Error:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { seedDatabase, autoSeedIfEmpty };

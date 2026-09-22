@@ -8,8 +8,10 @@ const { initSocket } = require('./sockets');
 
 (async () => {
   try {
-    // 1. Connect Database
+    // 1. Connect Database & Seed Demo Data if Database is Empty
     await connectDB();
+    const { autoSeedIfEmpty } = require('./seed');
+    await autoSeedIfEmpty();
 
     // 2. Create HTTP Server
     const server = http.createServer(app);
