@@ -9,6 +9,13 @@ import {
   typingSet,
   clearPresence,
 } from '../features/presence/presenceSlice';
+import {
+  commentReceived,
+  commentUpdated,
+  commentRemoved,
+} from '../features/comments/commentsSlice';
+import { activityReceived } from '../features/activity/activitySlice';
+import { notificationReceived } from '../features/notifications/notificationsSlice';
 
 /**
  * Custom hook connecting Socket.io, joining project rooms, handling real-time CRUD and presence
@@ -45,6 +52,11 @@ export function useProjectSocket(projectId) {
       'task:updated': (p) => p?.task && dispatch(taskReceived(p.task)),
       'task:moved': (p) => p?.task && dispatch(taskReceived(p.task)),
       'task:deleted': (p) => p?.taskId && dispatch(taskRemoved(p.taskId)),
+      'comment:created': (p) => p?.comment && dispatch(commentReceived(p.comment)),
+      'comment:updated': (p) => p?.comment && dispatch(commentUpdated(p.comment)),
+      'comment:deleted': (p) => p?.commentId && dispatch(commentRemoved(p.commentId)),
+      'activity:new': (p) => p?.activity && dispatch(activityReceived(p.activity)),
+      'notification:new': (p) => p?.notification && dispatch(notificationReceived(p.notification)),
       'presence:update': (p) => p?.online && dispatch(presenceSet(p.online)),
       'presence:left': (p) => p?.userId && dispatch(userLeft(p.userId)),
       'typing': (p) => dispatch(typingSet(p)),

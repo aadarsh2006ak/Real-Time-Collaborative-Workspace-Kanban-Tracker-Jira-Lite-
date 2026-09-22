@@ -4,6 +4,9 @@ const { Router } = require('express');
 const authRoutes = require('./modules/auth/auth.routes');
 const projectRoutes = require('./modules/projects/project.routes');
 const taskRoutes = require('./modules/tasks/task.routes');
+const commentRoutes = require('./modules/comments/comment.routes');
+const activityRoutes = require('./modules/activity/activity.routes');
+const notificationRoutes = require('./modules/notifications/notification.routes');
 
 const router = Router();
 
@@ -28,6 +31,15 @@ router.use('/projects', projectRoutes);
 
 // Task routes (includes project-nested and item-level routes)
 router.use('/', taskRoutes);
+
+// Comment routes (task-nested and comment-level routes)
+router.use('/', commentRoutes);
+
+// Activity audit stream routes
+router.use('/', activityRoutes);
+
+// Notification routes
+router.use('/notifications', notificationRoutes);
 
 // Test routes for test environment
 if (process.env.NODE_ENV === 'test') {
