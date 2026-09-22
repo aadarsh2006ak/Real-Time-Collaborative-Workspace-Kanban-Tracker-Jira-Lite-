@@ -14,14 +14,29 @@ export const login = createAsyncThunk('auth/login', async (credentials, { reject
 export const restoreSession = createAsyncThunk('auth/restore', async (_, { rejectWithValue }) => {
   try {
     const res = await api.post('/auth/refresh');
-    return res.data.data;
+    const data = res.data.data;
+    if (!data.user && data.accessToken) {
+      const meRes = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${data.accessToken}` },
+      });
+      data.user = meRes.data.data.user;
+    }
+    return data;
   } catch (err) {
     return rejectWithValue(err.response?.data?.error || { message: 'Session expired' });
   }
 });
 
+const getSavedUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('jl_user') || 'null');
+  } catch {
+    return null;
+  }
+};
+
 const initialState = {
-  user: null,
+  user: getSavedUser(),
   accessToken: null,
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
   error: null,
@@ -40,6 +55,11 @@ export const authSlice = createSlice({
       state.accessToken = null;
       state.status = 'unauthenticated';
       state.error = null;
+      try {
+        localStorage.removeItem('jl_user');
+      } catch {
+        // ignore
+      }
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -56,18 +76,44 @@ export const authSlice = createSlice({
         state.accessToken = payload.accessToken;
         state.status = 'authenticated';
         state.error = null;
+        if (payload.user) {
+          try {
+            localStorage.setItem('jl_user', JSON.stringify(payload.user));
+          } catch {
+            // ignore
+          }
+        }
       })
       .addCase(login.rejected, (state, { payload }) => {
         state.status = 'unauthenticated';
         state.error = payload;
+        try {
+          localStorage.removeItem('jl_user');
+        } catch {
+          // ignore
+        }
       })
       .addCase(restoreSession.fulfilled, (state, { payload }) => {
-        state.user = payload.user;
+        if (payload.user) {
+          state.user = payload.user;
+          try {
+            localStorage.setItem('jl_user', JSON.stringify(payload.user));
+          } catch {
+            // ignore
+          }
+        }
         state.accessToken = payload.accessToken;
         state.status = 'authenticated';
       })
       .addCase(restoreSession.rejected, (state) => {
+        state.user = null;
+        state.accessToken = null;
         state.status = 'unauthenticated';
+        try {
+          localStorage.removeItem('jl_user');
+        } catch {
+          // ignore
+        }
       });
   },
 });

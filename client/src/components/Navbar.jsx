@@ -6,7 +6,6 @@ import {
   Kanban,
   LogOut,
   Layers,
-  Sparkles,
   Bell,
   CheckCheck,
   MessageSquare,
@@ -91,7 +90,7 @@ export default function Navbar({ currentProject = null }) {
   };
 
   return (
-    <header className="border-b border-slate-800/80 bg-slate-900/75 backdrop-blur-xl sticky top-0 z-40">
+    <header className="border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl sticky top-0 z-40 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand & Breadcrumbs */}
         <div className="flex items-center gap-4 sm:gap-6">
@@ -100,28 +99,32 @@ export default function Navbar({ currentProject = null }) {
               <Kanban className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="font-bold text-base tracking-tight text-white group-hover:text-blue-400 transition-colors">
+              <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">
                 Jira-Lite
               </span>
             </div>
           </Link>
 
           {currentProject && (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <span className="text-slate-600">/</span>
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <span className="text-slate-300 dark:text-slate-600">/</span>
               <Link
                 to="/projects"
-                className="hover:text-slate-200 transition-colors flex items-center gap-1.5"
+                className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Projects</span>
+                <span className="hidden sm:inline">Projects</span>
               </Link>
-              <span className="text-slate-600">/</span>
-              <span className="font-semibold text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700/80 text-xs">
+              <span className="text-slate-300 dark:text-slate-600">/</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/25 text-xs font-mono">
                 {currentProject.key}
               </span>
-              <span className="text-slate-200 font-medium hidden sm:inline">
+              <span className="text-slate-800 dark:text-slate-200 font-medium hidden md:inline">
                 {currentProject.name}
+              </span>
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono ml-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>WSS_SYNCED</span>
               </span>
             </div>
           )}
@@ -133,41 +136,42 @@ export default function Navbar({ currentProject = null }) {
           <button
             onClick={() => dispatch(setShortcutsModalOpen(true))}
             title="Keyboard Shortcuts (?)"
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-white transition-all hidden sm:flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all hidden sm:flex items-center gap-1.5 text-xs font-medium"
           >
             <Command className="w-3.5 h-3.5" />
-            <span className="font-mono text-[11px] text-slate-400">?</span>
+            <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">?</span>
           </button>
 
           {/* Theme Switcher Toggle */}
           <button
             onClick={() => dispatch(toggleTheme())}
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode (T)`}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all"
           >
             {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
+              <Sun className="w-4 h-4 text-amber-400 animate-in spin-in-180" />
             ) : (
-              <Moon className="w-4 h-4 text-blue-400" />
+              <Moon className="w-4 h-4 text-blue-600 animate-in spin-in-180" />
             )}
           </button>
 
-          {user && (
-            <div className="flex items-center gap-2.5 sm:gap-3 pl-1 border-l border-slate-800">
-              {/* Notification Bell Dropdown */}
+          {/* User Profile & Logout Action */}
+          <div className="flex items-center gap-2.5 sm:gap-3 pl-1 border-l border-slate-200 dark:border-slate-800">
+            {/* Notification Bell Dropdown */}
+            {user && (
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setIsNotifOpen((prev) => !prev)}
                   title="Notifications"
                   className={`p-2 rounded-xl border transition-all relative ${
                     isNotifOpen
-                      ? 'bg-blue-600/20 border-blue-500/40 text-blue-400'
-                      : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700/60 text-slate-300'
+                      ? 'bg-blue-600/15 border-blue-500/40 text-blue-600 dark:text-blue-400'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   <Bell className="w-4 h-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-slate-900 animate-pulse">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 animate-pulse">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -175,12 +179,12 @@ export default function Navbar({ currentProject = null }) {
 
                 {/* Dropdown Popup */}
                 {isNotifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/90">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-white">Notifications</h4>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Notifications</h4>
                         {unreadCount > 0 && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 text-[10px] font-semibold">
+                          <span className="px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-semibold">
                             {unreadCount} new
                           </span>
                         )}
@@ -188,7 +192,7 @@ export default function Navbar({ currentProject = null }) {
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium transition-colors"
+                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium transition-colors"
                         >
                           <CheckCheck className="w-3.5 h-3.5" />
                           <span>Mark all read</span>
@@ -196,10 +200,10 @@ export default function Navbar({ currentProject = null }) {
                       )}
                     </div>
 
-                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
                       {notifications.length === 0 ? (
-                        <div className="py-8 text-center text-slate-500 text-xs">
-                          <Bell className="w-6 h-6 mx-auto mb-2 text-slate-700" />
+                        <div className="py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                          <Bell className="w-6 h-6 mx-auto mb-2 opacity-40" />
                           <p>You&apos;re all caught up!</p>
                         </div>
                       ) : (
@@ -209,37 +213,37 @@ export default function Navbar({ currentProject = null }) {
                             onClick={() => handleNotificationClick(notif)}
                             className={`p-3 text-xs transition-colors cursor-pointer flex gap-3 items-start ${
                               notif.readAt
-                                ? 'bg-transparent text-slate-400 hover:bg-slate-850/40'
-                                : 'bg-blue-600/5 text-slate-200 hover:bg-blue-600/10'
+                                ? 'bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850/40'
+                                : 'bg-blue-50/60 dark:bg-blue-600/5 text-slate-800 dark:text-slate-200 hover:bg-blue-100/60 dark:hover:bg-blue-600/10'
                             }`}
                           >
-                            <div className="mt-0.5 p-1.5 rounded-lg bg-slate-800 border border-slate-750 text-blue-400 flex-shrink-0">
+                            <div className="mt-0.5 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 text-blue-600 dark:text-blue-400 flex-shrink-0">
                               {notif.type === 'COMMENT' && (
                                 <MessageSquare className="w-3.5 h-3.5" />
                               )}
                               {notif.type === 'MENTION' && (
-                                <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                                <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
                               )}
                               {notif.type === 'ASSIGNMENT' && (
-                                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
                               )}
                               {notif.type !== 'COMMENT' &&
                                 notif.type !== 'MENTION' &&
                                 notif.type !== 'ASSIGNMENT' && (
-                                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                  <Clock className="w-3.5 h-3.5 text-amber-500" />
                                 )}
                             </div>
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1">
-                                <p className="font-semibold text-slate-200 truncate">
+                                <p className="font-semibold text-slate-900 dark:text-slate-200 truncate">
                                   {notif.title}
                                 </p>
-                                <span className="text-[10px] text-slate-500 flex-shrink-0">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">
                                   {formatTimeAgo(notif.createdAt)}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
                                 {notif.message}
                               </p>
                             </div>
@@ -254,32 +258,35 @@ export default function Navbar({ currentProject = null }) {
                   </div>
                 )}
               </div>
+            )}
 
-              {/* User Avatar */}
+            {/* User Avatar */}
+            {user && (
               <div className="flex items-center gap-2.5 pl-1">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-600 border border-indigo-400/40 flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                  {user.name ? user.name[0].toUpperCase() : 'U'}
+                  {user?.name ? user.name[0].toUpperCase() : 'U'}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">
-                  <span className="text-xs font-semibold text-slate-200 leading-tight">
-                    {user.name}
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                    {user?.name || 'User'}
                   </span>
-                  <span className="text-[10px] text-slate-400 leading-tight truncate max-w-[120px]">
-                    {user.email}
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight truncate max-w-[120px]">
+                    {user?.email || ''}
                   </span>
                 </div>
               </div>
+            )}
 
-              <button
-                onClick={handleLogout}
-                title="Log out"
-                className="p-2 rounded-lg bg-slate-800/80 hover:bg-rose-500/10 hover:text-rose-400 text-slate-400 border border-slate-700/60 hover:border-rose-500/30 transition-all text-xs flex items-center gap-1.5"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          )}
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              title="Log out"
+              className="p-2 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800/80 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 hover:border-rose-300 dark:hover:border-rose-500/30 transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>

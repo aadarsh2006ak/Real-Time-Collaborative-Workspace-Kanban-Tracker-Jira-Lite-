@@ -124,7 +124,12 @@ async function refreshSession(refreshTokenString, userAgent = '') {
   user.refreshTokens.push({ tokenHash: newHash, userAgent, expiresAt });
   await user.save();
 
+  const userObj = user.toObject ? user.toObject() : { ...user };
+  delete userObj.passwordHash;
+  delete userObj.refreshTokens;
+
   return {
+    user: userObj,
     accessToken: signAccess(user),
     refreshToken: newRefreshToken,
   };

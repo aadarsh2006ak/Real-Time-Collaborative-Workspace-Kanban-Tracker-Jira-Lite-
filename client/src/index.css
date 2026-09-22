@@ -4,16 +4,29 @@
 
 @layer base {
   :root {
-    --color-bg: #090d16;
-    --color-card: #131b2e;
+    --color-bg: #f8fafc;
+    --color-card: #ffffff;
+    --color-card-border: #e2e8f0;
+    --color-text-main: #0f172a;
+    --color-text-muted: #64748b;
+    --color-brand: #2563eb;
+  }
+
+  html.dark {
+    --color-bg: #050811;
+    --color-card: #0c1322;
     --color-card-border: #1e293b;
+    --color-text-main: #f1f5f9;
+    --color-text-muted: #94a3b8;
     --color-brand: #3b82f6;
   }
 
   body {
     background-color: var(--color-bg);
-    color: #f1f5f9;
+    color: var(--color-text-main);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   /* Sleek custom scrollbars */
@@ -25,32 +38,157 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #94a3b8;
     border-radius: 9999px;
   }
+  html.dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
   ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+  html.dark ::-webkit-scrollbar-thumb:hover {
     background: #475569;
   }
 }
 
 @layer utilities {
   .glass-card {
-    background: rgba(19, 27, 46, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  html.dark .glass-card {
+    background: rgba(12, 19, 34, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.09);
   }
 
   .glass-card-hover {
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .glass-card-hover:hover {
     transform: translateY(-2px);
     border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1);
+  }
+  html.dark .glass-card-hover:hover {
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(59, 130, 246, 0.2);
   }
 
   .glow-brand {
     box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.35);
   }
+
+  .bg-grid-cyber {
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  }
+  html.dark .bg-grid-cyber {
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  }
+
+  .bg-radial-vignette {
+    mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+    -webkit-mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+  }
+}
+
+/* Dynamic laser scanline for high-tech HUD */
+@keyframes scanlineAnim {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+
+.scanline-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.7), transparent);
+  animation: scanlineAnim 8s linear infinite;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+}
+
+/* Dynamic floating keyframes for Kanban ambient badges */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(10px) rotate(-1deg);
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.01);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes shimmerEffect {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float-1 {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-2 {
+  animation: floatReverse 8s ease-in-out infinite 1s;
+}
+
+.animate-float-3 {
+  animation: floatGentle 6s ease-in-out infinite 2s;
+}
+
+.animate-float-4 {
+  animation: floatSlow 9s ease-in-out infinite 1.5s;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 6s ease-in-out infinite;
+}
+
+.shimmer-badge {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  animation: shimmerEffect 4s infinite;
 }

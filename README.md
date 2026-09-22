@@ -1,4 +1,4 @@
-# ⚡ Jira-Lite — Real-Time Collaborative Kanban Workspace
+# ⚡ Jira-Lite — Enterprise Real-Time Collaborative Kanban Workspace
 
 <div align="center">
 
@@ -11,26 +11,27 @@
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 
 **A high-concurrency, enterprise-grade, real-time collaborative Kanban project management platform.**  
-Engineered with distributed systems principles, **$O(1)$ Fractional Indexing**, **Optimistic Concurrency Control (OCC)**, **Multi-Room WebSocket Synchronization with Redis Pub/Sub**, and **Zero-Latency (0ms) Optimistic UI Updates**.
+Engineered with distributed systems principles, **$O(1)$ Fractional Indexing**, **Optimistic Concurrency Control (OCC)**, **Multi-Room WebSocket Synchronization with Redis Pub/Sub**, **Engineered 2-Tier Command Ribbon**, and **Zero-Latency (0ms) Optimistic UI Updates**.
 
-[Live Demo](#-quickstart--local-setup) • [Architecture Deep Dive](#-architecture--distributed-systems-design) • [API Documentation](#-api-documentation--swagger-openapi-30) • [Test Coverage](#-automated-testing-suites-88-passing-tests)
+[🌟 Key Highlights](#-executive-summary--key-engineering-highlights) • [🏛️ Architecture Deep Dive](#-architecture--distributed-systems-design) • [📖 API Documentation](#-api-documentation--swagger-openapi-30) • [🧪 Test Suites](#-automated-testing-suites-88-passing-tests) • [🚀 Quickstart](#-quickstart--local-setup) • [👨‍💻 Author](#-author--connect)
 
 </div>
 
 ---
 
-## 🌟 Executive Summary & Engineering Highlights
+## 🌟 Executive Summary & Key Engineering Highlights
 
-Jira-Lite is a production-hardened fullstack workspace engineered to solve the complex concurrency and distributed synchronization challenges present in modern agile trackers (like Jira, Linear, and Trello):
+Jira-Lite is a production-hardened fullstack workspace engineered to solve the complex concurrency, real-time presence, and distributed synchronization challenges found in modern agile trackers (like Jira, Linear, and Trello):
 
-- 🔄 **0ms Optimistic UI with Auto-Rollback**: Card drag-and-drop operations update the user's viewport in `0ms` via Redux Toolkit entity adapters, with automatic rollback if network failure occurs.
-- 🔢 **$O(1)$ Fractional Midpoint Reordering**: Avoids costly $O(N)$ database index re-writes during card reordering using midpoint math algorithm `(before + after) / 2`.
+- 🔄 **0ms Optimistic UI with Automatic Rollback**: Card drag-and-drop operations update the user's viewport in `0ms` via Redux Toolkit entity adapters, with seamless automatic rollback if network failure occurs.
+- 🔢 **$O(1)$ Fractional Midpoint Reordering**: Eliminates costly $O(N)$ database write amplification during card moves using midpoint mathematics: `(before + after) / 2`.
 - 🛡️ **Optimistic Concurrency Control (OCC)**: Enforces document `version` counter increments on every update, rejecting stale mid-air collisions with `409 VERSION_CONFLICT`.
 - 📡 **Distributed Real-Time Engine (Socket.io + Redis)**: Room-based broadcast synchronization with sender-skip (`x-socket-id`), live presence avatars, and typing indicators.
 - 🔐 **Zero-Trust Security & Token Theft Detection**: 15-minute JWT access tokens coupled with 7-day rotating HTTP-Only refresh cookies. If a consumed refresh token is presented again, all active sessions are instantly revoked.
-- 📊 **Executive Analytics & Multi-Criteria Filtering**: Dynamic WIP limit adherence metrics, workload distribution by assignees, overdue task tracking, and multi-label search.
-- 📦 **RFC 4180 CSV & JSON Batch Ingestion**: High-throughput export and bulk task import engine with automatic atomic sequential key assignment (`PROJ-1`, `PROJ-2`).
-- ⌨️ **Global Keyboard Hotkey Navigation**: Power-user keyboard workflow (`/` search, `C`/`N` create, `M` multi-select, `T` theme switch, `Del` bulk delete, `?` guide).
+- 🎨 **Engineered 2-Tier Command Layout & Dual Themes**: Clean visual separation between project identity/core CTAs (Tier 1) and live search/filter controls (Tier 2). High-tech Dark Mode and clean SaaS Light Mode with instant toggle.
+- 📊 **Executive Analytics & Kanban Health Monitoring**: Live WIP limit compliance monitoring, bottleneck detection, workload distribution by assignees, overdue task tracking, and priority breakdown.
+- 📦 **RFC 4180 CSV & JSON Bulk Ingestion**: High-throughput export and bulk task import engine with automatic atomic sequential key assignment (`EP-1`, `EP-2`).
+- ⌨️ **Global Keyboard Hotkey Workflow**: Power-user keyboard navigation (`/` search, `C`/`N` create, `M` multi-select, `T` theme switch, `Del` bulk delete, `?` shortcuts guide).
 
 ---
 
@@ -75,7 +76,7 @@ graph TB
 ## 🔬 Algorithmic Deep Dives
 
 ### 1. Fractional Midpoint Indexing ($O(1)$ Drag & Drop)
-Traditional Kanban implementations update the `position` index of every card below the dropped card ($O(N)$ write amplification). Jira-Lite uses fractional midpoint indexing:
+Traditional Kanban implementations update the `position` index of every card below the dropped card ($O(N)$ database write amplification). Jira-Lite uses fractional midpoint indexing:
 
 $$\text{newPosition} = \frac{\text{before.position} + \text{after.position}}{2}$$
 
@@ -124,7 +125,7 @@ sequenceDiagram
 
 ---
 
-## ⌨️ Keyboard Shortcuts Reference
+## ⌨️ Global Keyboard Shortcuts Reference
 
 | Key Combo | Action Description | Scope |
 | :---: | :--- | :--- |
@@ -142,29 +143,29 @@ sequenceDiagram
 
 ```
 Frontend:
-├── React 18.3 (SPA)
-├── Redux Toolkit + Entity Adapters (State Management)
-├── React Router v7 (Client-Side Navigation)
-├── TailwindCSS 3.4 + Custom Design Tokens (Styling)
-├── @hello-pangea/dnd (Smooth Drag & Drop)
-├── Lucide React (Icons)
-└── Vite 6 (Bundle Engine & Code Splitting)
+├── React 18.3 (SPA with Concurrent Rendering)
+├── Redux Toolkit + Entity Adapters (Normalized State Management)
+├── React Router v7 (Client-Side Routing & Protected Route Guards)
+├── TailwindCSS 3.4 + Custom Tokens (Dual Theme Dark & Light Engine)
+├── @hello-pangea/dnd (Fluid Drag & Drop Kanban Engine)
+├── Lucide React (Pixel-perfect Feather Icons)
+└── Vite 6 (Lightning Fast Build & Route Code Splitting)
 
 Backend & Database:
-├── Node.js 20+ (Runtime)
-├── Express.js 4 (REST API Gateway)
-├── Socket.io 4.8 (Real-Time Bidirectional Event Engine)
-├── MongoDB 7.0 + Mongoose 8 (Document Database)
-├── Redis 7.2 (Pub/Sub & Presence Tracking)
-├── Zod 3.24 (Type Validation & Env Verification)
-└── Swagger UI Express (OpenAPI 3.0 Documentation)
+├── Node.js 20+ (LTS Runtime)
+├── Express.js 4 (REST API Gateway & Security Pipeline)
+├── Socket.io 4.8 (Real-Time Bi-directional Event Hub)
+├── MongoDB 7.0 + Mongoose 8 (Document Database with Indexes)
+├── Redis 7.2 (Distributed Pub/Sub & Presence Tracking)
+├── Zod 3.24 (Type Validation & Environment Verification)
+└── Swagger UI Express (Interactive OpenAPI 3.0 Documentation)
 
 DevOps & Quality Assurance:
-├── Docker & Docker Compose (Multi-Container Orchestration)
-├── Nginx 1.27 Alpine (Static SPA Reverse Proxy)
-├── GitHub Actions (CI/CD Automated Test Matrix)
-├── Jest 29 + Supertest (Backend Testing - 78 Tests)
-└── Vitest 3 (Frontend Component & Redux Testing - 10 Tests)
+├── Docker & Docker Compose (Multi-Container Production Orchestration)
+├── Nginx 1.27 Alpine (Production Static SPA Reverse Proxy)
+├── GitHub Actions (CI/CD Automated Test & Linting Matrix)
+├── Jest 29 + Supertest (Backend Testing — 78 Tests)
+└── Vitest 3 (Frontend Testing — 10 Tests)
 ```
 
 ---
@@ -181,7 +182,7 @@ cd Real-Time-Collaborative-Workspace-Kanban-Tracker-Jira-Lite-
 # 2. Boot production stack (MongoDB, Redis, Express API, Nginx Client)
 docker compose -f docker-compose.prod.yml up --build -d
 
-# 3. Seed Demo Data inside container
+# 3. Seed Demo Data inside container (Optional)
 docker exec -it jira_server_prod npm run seed
 ```
 
@@ -288,11 +289,17 @@ Key architectural decisions are documented in [`docs/adr/`](docs/adr/):
 
 ---
 
-## 👨‍💻 Author & Contribution
+## 👨‍💻 Author & Connect
 
-Developed with ❤️ by **Aadarsh Kumar**.  
-- **GitHub**: [@aadarsh2006ak](https://github.com/aadarsh2006ak)
-- **Repository**: [Real-Time-Collaborative-Workspace-Kanban-Tracker-Jira-Lite-](https://github.com/aadarsh2006ak/Real-Time-Collaborative-Workspace-Kanban-Tracker-Jira-Lite-)
+Developed by **Aadarsh Tiwari (Aadarsh Kumar)**.
+
+<div align="left">
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Aadarsh_Kumar-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/aadarshkumar2006/)
+[![Instagram](https://img.shields.io/badge/Instagram-@aadarsh__tiwari__ak-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/aadarsh_tiwari_ak?stkn=MWE1NmthcDB5OHRjMA==)
+[![GitHub](https://img.shields.io/badge/GitHub-@aadarsh2006ak-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/aadarsh2006ak)
+
+</div>
 
 ---
 

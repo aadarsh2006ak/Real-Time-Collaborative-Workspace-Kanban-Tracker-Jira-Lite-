@@ -70,6 +70,7 @@ exports.refresh = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
+        user: result.user,
         accessToken: result.accessToken,
       },
     });

@@ -1,13 +1,14 @@
 // client/src/features/auth/RegisterPage.jsx
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { Kanban, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, Check } from 'lucide-react';
 import { tokenRefreshed, clearAuthError } from './authSlice';
 import { api } from '../../lib/api';
+import AuthLayout from './AuthLayout';
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
@@ -23,15 +24,19 @@ export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { error } = useSelector((state) => state.auth);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
     setError,
   } = useForm({
     resolver: zodResolver(registerSchema),
   });
+
+  const watchedPassword = watch('password', '');
 
   useEffect(() => {
     dispatch(clearAuthError());
@@ -52,102 +57,142 @@ export default function RegisterPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#070b14] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-blue-600 selection:text-white">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 items-center justify-center shadow-xl shadow-blue-500/25 mb-4">
-          <Kanban className="w-6 h-6 text-white" />
-        </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          Create your account
-        </h2>
-        <p className="mt-2 text-xs text-slate-400">
-          Start collaborating in real-time with your engineering team
-        </p>
-      </div>
+  const hasLength = watchedPassword.length >= 8;
+  const hasUpper = /[A-Z]/.test(watchedPassword);
+  const hasNum = /[0-9]/.test(watchedPassword);
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-        <div className="bg-slate-900/70 border border-slate-800/80 backdrop-blur-xl py-8 px-6 shadow-2xl rounded-2xl sm:px-10">
-          {(errors.root || error) && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/30 flex items-center gap-2.5 text-rose-300 text-xs">
-              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-              <span>{errors.root?.message || error?.message}</span>
+  return (
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start collaborating in real-time with your engineering team"
+    >
+      {(errors.root || error) && (
+        <div className="mb-5 p-3.5 rounded-2xl bg-rose-950/60 border border-rose-500/30 flex items-center gap-2.5 text-rose-300 text-xs shadow-lg shadow-rose-950/30 animate-shake">
+          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+          <span>{errors.root?.message || error?.message}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <User className="w-3.5 h-3.5 text-blue-400" />
+            <span>Full Name</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              {...register('name')}
+              placeholder="Aadarsh Kumar"
+              className="w-full pl-3.5 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
+            />
+          </div>
+          {errors.name && (
+            <p className="mt-1.5 text-[11px] text-rose-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.name.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-blue-400" />
+            <span>Work Email</span>
+          </label>
+          <div className="relative">
+            <input
+              type="email"
+              {...register('email')}
+              placeholder="aadarsh@example.com"
+              className="w-full pl-3.5 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
+            />
+          </div>
+          {errors.email && (
+            <p className="mt-1.5 text-[11px] text-rose-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.email.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5 text-blue-400" />
+            <span>Password</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')}
+              placeholder="Min 8 chars (e.g. Secret123)"
+              className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-950/80 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          
+          {/* Password strength dynamic hints */}
+          {watchedPassword && (
+            <div className="mt-2 p-2 rounded-lg bg-slate-950/50 border border-slate-800 text-[10px] space-y-1">
+              <div className={`flex items-center gap-1.5 ${hasLength ? 'text-emerald-400' : 'text-slate-400'}`}>
+                <Check className={`w-3 h-3 ${hasLength ? 'opacity-100' : 'opacity-30'}`} />
+                <span>At least 8 characters</span>
+              </div>
+              <div className={`flex items-center gap-1.5 ${hasUpper ? 'text-emerald-400' : 'text-slate-400'}`}>
+                <Check className={`w-3 h-3 ${hasUpper ? 'opacity-100' : 'opacity-30'}`} />
+                <span>At least one uppercase letter (A-Z)</span>
+              </div>
+              <div className={`flex items-center gap-1.5 ${hasNum ? 'text-emerald-400' : 'text-slate-400'}`}>
+                <Check className={`w-3 h-3 ${hasNum ? 'opacity-100' : 'opacity-30'}`} />
+                <span>At least one number (0-9)</span>
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Full Name
-              </label>
-              <input
-                type="text"
-                {...register('name')}
-                placeholder="Siddharth Kumar"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-              />
-              {errors.name && (
-                <p className="mt-1 text-[11px] text-rose-400">{errors.name.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Work Email
-              </label>
-              <input
-                type="email"
-                {...register('email')}
-                placeholder="siddharth@example.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-              />
-              {errors.email && (
-                <p className="mt-1 text-[11px] text-rose-400">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                {...register('password')}
-                placeholder="Min 8 chars (e.g. Secret123)"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-              />
-              {errors.password && (
-                <p className="mt-1 text-[11px] text-rose-400">{errors.password.message}</p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Creating Account...</span>
-                </>
-              ) : (
-                <>
-                  <span>Create Account</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
+          {errors.password && (
+            <p className="mt-1.5 text-[11px] text-rose-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.password.message}
+            </p>
+          )}
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-blue-400 hover:text-blue-300">
-            Sign in
-          </Link>
-        </p>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="relative group w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-blue-500/50 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed mt-2 overflow-hidden"
+        >
+          <div className="absolute inset-0 shimmer-badge pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Creating Account...</span>
+            </>
+          ) : (
+            <>
+              <span>Create Account</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </>
+          )}
+        </button>
+      </form>
+
+      <div className="mt-5 pt-4 text-center border-t border-slate-800/60 text-xs text-slate-400">
+        Already have an account?{' '}
+        <Link
+          to="/login"
+          className="font-semibold text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+        >
+          Sign in
+        </Link>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

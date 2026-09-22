@@ -151,9 +151,15 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
   };
 
   const handleAddLabel = (labelToAdd) => {
-    const trimmed = labelToAdd.trim().toLowerCase();
-    if (trimmed && !labels.includes(trimmed)) {
-      setLabels([...labels, trimmed]);
+    if (!labelToAdd || typeof labelToAdd !== 'string') return;
+    const splitLabels = labelToAdd
+      .split(/[, ]+/)
+      .map((l) => l.trim().replace(/^#/, '').toLowerCase())
+      .filter((l) => l.length > 0);
+
+    const newUnique = splitLabels.filter((l) => !labels.includes(l));
+    if (newUnique.length > 0) {
+      setLabels((prev) => [...prev, ...newUnique]);
       setNewLabelInput('');
     }
   };
@@ -216,15 +222,15 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
   const projectMembers = project?.members || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-900 dark:text-slate-100">
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/80">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
               {task.key}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Created by {task.reporter?.name || 'Team Member'}
             </span>
           </div>
@@ -233,7 +239,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
             <button
               onClick={handleDelete}
               title="Delete Task"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -243,7 +249,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                 dispatch(clearActivity());
                 onClose();
               }}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -251,13 +257,13 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex px-5 border-b border-slate-800 text-xs font-medium gap-6 bg-slate-900/40">
+        <div className="flex px-5 border-b border-slate-200 dark:border-slate-800 text-xs font-medium gap-6 bg-slate-50/50 dark:bg-slate-900/40">
           <button
             onClick={() => setActiveTab('details')}
             className={`py-3 flex items-center gap-2 transition-all ${
               activeTab === 'details'
-                ? 'text-blue-400 border-b-2 border-blue-500 font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-500 font-semibold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <FileText className="w-3.5 h-3.5" /> Details
@@ -266,13 +272,13 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
             onClick={() => setActiveTab('comments')}
             className={`py-3 flex items-center gap-2 transition-all ${
               activeTab === 'comments'
-                ? 'text-blue-400 border-b-2 border-blue-500 font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-500 font-semibold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" /> Comments
             {comments.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300">
+              <span className="px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-300 font-mono">
                 {comments.length}
               </span>
             )}
@@ -281,8 +287,8 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
             onClick={() => setActiveTab('activity')}
             className={`py-3 flex items-center gap-2 transition-all ${
               activeTab === 'activity'
-                ? 'text-blue-400 border-b-2 border-blue-500 font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-500 font-semibold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Clock className="w-3.5 h-3.5" /> Activity
@@ -290,12 +296,12 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1 bg-white dark:bg-slate-900">
           {conflictError && (
-            <div className="mb-4 p-4 rounded-xl bg-rose-950/70 border border-rose-500/40 flex items-start gap-3 text-rose-200 text-xs">
-              <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+            <div className="mb-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-500/40 flex items-start gap-3 text-rose-800 dark:text-rose-200 text-xs">
+              <AlertTriangle className="w-5 h-5 text-rose-500 dark:text-rose-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-rose-300">Version Conflict (409)</p>
+                <p className="font-semibold text-rose-700 dark:text-rose-300">Version Conflict (409)</p>
                 <p className="mt-1">{conflictError}</p>
               </div>
             </div>
@@ -305,7 +311,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
           {activeTab === 'details' && (
             <form onSubmit={handleSave} className="space-y-5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Title
                 </label>
                 <input
@@ -313,20 +319,20 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-300 dark:border-slate-750 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-slate-400" />
                     Workflow Column
                   </label>
                   <select
                     value={columnId}
                     onChange={(e) => setColumnId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-850 border border-slate-750 text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-300 dark:border-slate-750 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer"
                   >
                     {columns.map((c) => (
                       <option key={c._id} value={c._id}>
@@ -337,13 +343,13 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Priority
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-850 border border-slate-750 text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-300 dark:border-slate-750 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -353,7 +359,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     Due Date
                   </label>
@@ -361,14 +367,14 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-850 border border-slate-750 text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-300 dark:border-slate-750 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* Assignees Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-slate-400" />
                   Assignees
                 </label>
@@ -383,15 +389,15 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                         onClick={() => handleToggleAssignee(memberId)}
                         className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-2 transition-all ${
                           isAssigned
-                            ? 'bg-blue-600/20 border-blue-500 text-blue-300 ring-1 ring-blue-500/50'
-                            : 'bg-slate-850 border-slate-750 text-slate-400 hover:text-slate-200'
+                            ? 'bg-blue-50 dark:bg-blue-600/20 border-blue-500 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/50'
+                            : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-750 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                       >
-                        <div className="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[9px] font-bold flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] font-bold flex items-center justify-center">
                           {m.user?.name ? m.user.name[0].toUpperCase() : 'M'}
                         </div>
                         <span>{m.user?.name || 'Member'}</span>
-                        {isAssigned && <Check className="w-3 h-3 text-blue-400" />}
+                        {isAssigned && <Check className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
                       </button>
                     );
                   })}
@@ -400,7 +406,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
 
               {/* Labels Manager */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-slate-400" />
                   Labels & Tags
                 </label>
@@ -408,13 +414,13 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                   {labels.map((lbl) => (
                     <span
                       key={lbl}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20 text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 text-xs font-medium font-mono"
                     >
                       <span>#{lbl}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveLabel(lbl)}
-                        className="hover:text-white"
+                        className="hover:text-rose-500 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -434,14 +440,19 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                         handleAddLabel(newLabelInput);
                       }
                     }}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-slate-850 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-300 dark:border-slate-750 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-inner"
                   />
                   <button
                     type="button"
-                    onClick={() => handleAddLabel(newLabelInput)}
-                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleAddLabel(newLabelInput);
+                    }}
+                    title="Add label"
+                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
                   </button>
                 </div>
 
@@ -453,7 +464,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                       key={preset}
                       type="button"
                       onClick={() => handleAddLabel(preset)}
-                      className="px-2 py-0.5 rounded-md bg-slate-850 hover:bg-slate-800 border border-slate-750 text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
+                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-750 text-[10px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors font-mono"
                     >
                       +{preset}
                     </button>
@@ -462,7 +473,7 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Description
                 </label>
                 <textarea
@@ -470,12 +481,12 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add detailed task description, acceptance criteria, or notes..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-850 border border-slate-750 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-none leading-relaxed"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-300 dark:border-slate-750 text-slate-900 dark:text-white text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-none leading-relaxed"
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 font-mono">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                   OCC Version: {task.version}
                 </span>
 
@@ -483,14 +494,14 @@ export default function TaskModal({ task, project, isOpen, onClose }) {
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800"
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     {isSaving ? (
                       <>
