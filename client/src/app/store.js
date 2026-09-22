@@ -4,6 +4,7 @@ import authReducer from '../features/auth/authSlice';
 import projectsReducer from '../features/projects/projectsSlice';
 import tasksReducer from '../features/tasks/tasksSlice';
 import uiReducer from '../features/ui/uiSlice';
+import presenceReducer from '../features/presence/presenceSlice';
 import { injectStore } from '../lib/api';
 
 export const store = configureStore({
@@ -12,6 +13,7 @@ export const store = configureStore({
     projects: projectsReducer,
     tasks: tasksReducer,
     ui: uiReducer,
+    presence: presenceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

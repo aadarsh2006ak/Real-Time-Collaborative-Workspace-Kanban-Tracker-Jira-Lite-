@@ -8,6 +8,7 @@ import { fetchProjectById, selectProjectById } from '../projects/projectsSlice';
 import { fetchTasks, createTask, moveTask } from '../tasks/tasksSlice';
 import { selectTasksByColumn } from '../tasks/tasksSelectors';
 import { setFilter, addToast } from '../ui/uiSlice';
+import { useProjectSocket } from '../../hooks/useProjectSocket';
 import { calcPosition } from '../../lib/position';
 import Navbar from '../../components/Navbar';
 import Column from './Column';
@@ -17,11 +18,15 @@ export default function BoardPage() {
   const { projectId } = useParams();
   const dispatch = useDispatch();
 
+  // Connect project socket for real-time collaboration & presence
+  useProjectSocket(projectId);
+
   const project = useSelector((state) => selectProjectById(state, projectId));
   const projectStatus = useSelector((state) => state.projects.status);
   const tasksStatus = useSelector((state) => state.tasks.status);
   const byColumn = useSelector(selectTasksByColumn);
   const filters = useSelector((state) => state.ui.filters);
+  const onlineUsers = useSelector((state) => state.presence?.online || []);
 
   // Modal states
   const [selectedTask, setSelectedTask] = useState(null);
@@ -142,15 +147,26 @@ export default function BoardPage() {
           </div>
 
           <div className="hidden sm:flex items-center -space-x-1.5 pl-3 border-l border-slate-800">
-            {project?.members?.map((m, i) => (
-              <div
-                key={i}
-                title={`${m.user?.name || 'Member'} (${m.role})`}
-                className="w-6 h-6 rounded-full bg-slate-800 border border-slate-900 text-slate-300 text-[10px] font-bold flex items-center justify-center"
-              >
-                {m.user?.name ? m.user.name[0].toUpperCase() : 'M'}
-              </div>
-            ))}
+            {project?.members?.map((m, i) => {
+              const memberId = m.user?._id || m.user;
+              const isOnline = onlineUsers.includes(memberId);
+              return (
+                <div key={i} className="relative group">
+                  <div
+                    title={`${m.user?.name || 'Member'} (${m.role})${isOnline ? ' • Active Now' : ''}`}
+                    className="w-6 h-6 rounded-full bg-slate-800 border border-slate-900 text-slate-300 text-[10px] font-bold flex items-center justify-center cursor-default transition-transform hover:scale-110"
+                  >
+                    {m.user?.name ? m.user.name[0].toUpperCase() : 'M'}
+                  </div>
+                  {isOnline && (
+                    <span
+                      title="Online"
+                      className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-slate-900 animate-pulse"
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

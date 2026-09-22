@@ -3,6 +3,25 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const logger = require('../config/logger');
+const Project = require('../modules/projects/project.model');
+
+/**
+ * Checks if a user is an owner or member of a project
+ */
+async function isProjectMember(projectId, userId) {
+  const project = await Project.findById(projectId).select('owner members');
+  if (!project) return false;
+  if (String(project.owner) === userId) return true;
+  return project.members.some((m) => String(m.user) === userId);
+}
+
+/**
+ * Calculates distinct online user IDs active in a project room
+ */
+async function getOnlineUsers(io, projectId) {
+  const sockets = await io.in(`project:${projectId}`).fetchSockets();
+  return [...new Set(sockets.map((s) => s.data.userId).filter(Boolean))];
+}
 
 function initSocket(httpServer) {
   const io = new Server(httpServer, {
@@ -12,9 +31,10 @@ function initSocket(httpServer) {
     },
     pingInterval: 25000,
     pingTimeout: 20000,
+    transports: ['websocket', 'polling'],
   });
 
-  // Socket Authentication Middleware
+  // 1. Handshake Authentication Guard
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -33,17 +53,23 @@ function initSocket(httpServer) {
     const userId = socket.data.userId;
     logger.debug(`🔌 Socket connected: ${socket.id} (user: ${userId})`);
 
-    // Join personal user room for targeted notifications
+    // Join personal user room for direct in-app notifications
     socket.join(`user:${userId}`);
 
-    // Project room handlers
+    // 2. Project Room Join with RBAC Authorization
     socket.on('project:join', async ({ projectId }, ack) => {
       try {
         if (!projectId) return ack?.({ ok: false, error: 'BAD_REQUEST' });
-        await socket.join(`project:${projectId}`);
-        const onlineSockets = await io.in(`project:${projectId}`).fetchSockets();
-        const online = [...new Set(onlineSockets.map((s) => s.data.userId))];
 
+        const hasAccess = await isProjectMember(projectId, socket.data.userId);
+        if (!hasAccess) {
+          return ack?.({ ok: false, error: 'FORBIDDEN' });
+        }
+
+        await socket.join(`project:${projectId}`);
+        const online = await getOnlineUsers(io, projectId);
+
+        // Broadcast presence to all users in the room
         io.to(`project:${projectId}`).emit('presence:update', { online });
         ack?.({ ok: true, online });
       } catch (err) {
@@ -52,12 +78,16 @@ function initSocket(httpServer) {
       }
     });
 
-    socket.on('project:leave', ({ projectId }) => {
+    // 3. Project Room Leave
+    socket.on('project:leave', async ({ projectId }) => {
       if (projectId) {
         socket.leave(`project:${projectId}`);
+        const online = await getOnlineUsers(io, projectId);
+        socket.to(`project:${projectId}`).emit('presence:update', { online });
       }
     });
 
+    // 4. Real-Time Typing Indicators
     socket.on('typing', ({ projectId, taskId, isTyping }) => {
       if (!socket.rooms.has(`project:${projectId}`)) return;
       socket.to(`project:${projectId}`).emit('typing', {
@@ -67,6 +97,7 @@ function initSocket(httpServer) {
       });
     });
 
+    // 5. Disconnect Lifecycle & Presence Cleanup
     socket.on('disconnecting', () => {
       for (const room of socket.rooms) {
         if (room.startsWith('project:')) {
@@ -83,4 +114,4 @@ function initSocket(httpServer) {
   return io;
 }
 
-module.exports = { initSocket };
+module.exports = { initSocket, isProjectMember, getOnlineUsers };
