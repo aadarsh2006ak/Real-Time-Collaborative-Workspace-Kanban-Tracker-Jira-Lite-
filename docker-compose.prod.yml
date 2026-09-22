@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0-jammy
+    container_name: jira_mongo_prod
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: jira_lite
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - jira_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: jira_redis_prod
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - jira_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: jira_server_prod
+    restart: always
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongodb:27017/jira_lite
+      REDIS_URL: redis://redis:6379
+      CLIENT_URL: http://localhost
+      JWT_ACCESS_SECRET: production_jwt_access_secret_super_secure_key_12345!
+      JWT_REFRESH_SECRET: production_jwt_refresh_secret_super_secure_key_12345!
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jira_network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: jira_client_prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - jira_network
+
+networks:
+  jira_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  redis_data:

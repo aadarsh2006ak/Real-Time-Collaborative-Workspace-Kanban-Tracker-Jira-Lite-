@@ -2,8 +2,11 @@
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const pinoHttp = require('pino-http');
+const swaggerUi = require('swagger-ui-express');
+const swaggerDoc = require('./docs/swagger.json');
 const env = require('./config/env');
 const logger = require('./config/logger');
 const routes = require('./routes');
@@ -11,8 +14,9 @@ const { notFound, errorHandler } = require('./middlewares/error');
 
 const app = express();
 
-// Security and Parsing Middlewares
+// Security, Compression and Parsing Middlewares
 app.use(helmet());
+app.use(compression());
 app.use(
   cors({
     origin: env.CLIENT_URL,
@@ -37,6 +41,9 @@ app.get('/healthz', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Swagger / OpenAPI 3.0 Documentation Endpoint
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 
 // API Routes
 app.use('/api/v1', routes);

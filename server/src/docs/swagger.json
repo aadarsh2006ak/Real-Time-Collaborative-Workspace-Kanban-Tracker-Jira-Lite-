@@ -1,0 +1,313 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Jira-Lite Real-Time Collaborative Kanban API",
+    "version": "1.0.0",
+    "description": "High-performance REST & Real-Time API specification for Jira-Lite Kanban Tracker with OCC (Optimistic Concurrency Control), Fractional Indexing, RBAC, and Socket.io presence synchronization.",
+    "contact": {
+      "name": "Jira-Lite Core Engineering Team",
+      "url": "https://github.com/example/jira-lite"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Development API Server"
+    },
+    {
+      "url": "https://api.jira-lite.production/api/v1",
+      "description": "Production API Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Short-lived (15 minute) JWT Access Token passed in Authorization header"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refreshToken",
+        "description": "Rotating (7 day) HTTP-Only cookie with reuse and theft detection"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "code": { "type": "string", "example": "RESOURCE_NOT_FOUND" },
+          "message": { "type": "string", "example": "Requested entity does not exist" },
+          "errors": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string", "example": "651a2b3c4d5e6f7a8b9c0d1e" },
+          "name": { "type": "string", "example": "Alex Morgan" },
+          "email": { "type": "string", "example": "alex@example.com" },
+          "avatar": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Column": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string", "example": "col_101" },
+          "name": { "type": "string", "example": "In Progress" },
+          "order": { "type": "number", "example": 1 },
+          "wipLimit": { "type": "number", "example": 5 }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string", "example": "651a2b3c4d5e6f7a8b9c0d2f" },
+          "key": { "type": "string", "example": "PROJ-42" },
+          "title": { "type": "string", "example": "Implement Redis Caching Layer" },
+          "description": { "type": "string", "example": "Configure Redis cluster for distributed socket pub/sub" },
+          "projectId": { "type": "string", "example": "651a2b3c4d5e6f7a8b9c0d1a" },
+          "columnId": { "type": "string", "example": "col_101" },
+          "position": { "type": "number", "example": 2048 },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"], "example": "high" },
+          "version": { "type": "number", "example": 3 },
+          "assignees": { "type": "array", "items": { "$ref": "#/components/schemas/User" } },
+          "labels": { "type": "array", "items": { "type": "string" }, "example": ["backend", "infra"] },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user account",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "example": "Jane Doe" },
+                  "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+                  "password": { "type": "string", "format": "password", "example": "SecurePass123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created successfully with access token and refresh cookie" },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Email already registered" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate with email and password",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "jane@example.com" },
+                  "password": { "type": "string", "example": "SecurePass123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authentication successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Retrieve authenticated user profile",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Authenticated user profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Rotate refresh token & acquire new access token",
+        "tags": ["Authentication"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Token rotated successfully" },
+          "401": { "description": "Invalid token or theft detected" }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "List all projects the user is affiliated with",
+        "tags": ["Projects"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of user projects" }
+        }
+      },
+      "post": {
+        "summary": "Create a new Kanban project with default columns",
+        "tags": ["Projects"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "key"],
+                "properties": {
+                  "name": { "type": "string", "example": "Core Engine" },
+                  "key": { "type": "string", "example": "CORE" },
+                  "description": { "type": "string", "example": "Next-gen distributed Kanban" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Project created" }
+        }
+      }
+    },
+    "/projects/{projectId}/tasks": {
+      "get": {
+        "summary": "Retrieve tasks for project board with filters",
+        "tags": ["Tasks"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "priority", "in": "query", "schema": { "type": "string" } },
+          { "name": "label", "in": "query", "schema": { "type": "string" } },
+          { "name": "assignee", "in": "query", "schema": { "type": "string" } },
+          { "name": "isOverdue", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "List of filtered tasks" }
+        }
+      },
+      "post": {
+        "summary": "Create a new task with sequential key",
+        "tags": ["Tasks"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "columnId"],
+                "properties": {
+                  "title": { "type": "string", "example": "Build Search UI" },
+                  "description": { "type": "string", "example": "Elasticsearch client integration" },
+                  "columnId": { "type": "string", "example": "col_100" },
+                  "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Task created" }
+        }
+      }
+    },
+    "/tasks/{taskId}/move": {
+      "patch": {
+        "summary": "Reorder/Move task card with fractional midpoint indexing",
+        "tags": ["Tasks"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["toColumnId"],
+                "properties": {
+                  "toColumnId": { "type": "string" },
+                  "beforeId": { "type": "string", "nullable": true },
+                  "afterId": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Task moved successfully with new fractional position" }
+        }
+      }
+    },
+    "/projects/{projectId}/export": {
+      "get": {
+        "summary": "Export board tasks in CSV (RFC 4180) or JSON format",
+        "tags": ["Export & Import"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["csv", "json"], "default": "json" } }
+        ],
+        "responses": {
+          "200": { "description": "Export data stream or JSON payload" }
+        }
+      }
+    },
+    "/projects/{projectId}/import": {
+      "post": {
+        "summary": "Bulk import tasks from CSV/JSON batch ingestion",
+        "tags": ["Export & Import"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["tasks"],
+                "properties": {
+                  "tasks": { "type": "array", "items": { "type": "object" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Batch tasks ingested with sequential keys" }
+        }
+      }
+    }
+  }
+}
