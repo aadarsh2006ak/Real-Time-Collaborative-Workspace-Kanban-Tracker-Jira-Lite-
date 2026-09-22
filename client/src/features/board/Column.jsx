@@ -3,7 +3,15 @@ import { Droppable } from '@hello-pangea/dnd';
 import { Plus, AlertTriangle } from 'lucide-react';
 import TaskCard from './TaskCard';
 
-export default function Column({ column, tasks = [], onAddTask, onTaskClick }) {
+export default function Column({
+  column,
+  tasks = [],
+  onAddTask,
+  onTaskClick,
+  isSelectMode = false,
+  selectedTaskIds = [],
+  onToggleSelectTask,
+}) {
   const isOverWip = column.wipLimit > 0 && tasks.length > column.wipLimit;
 
   return (
@@ -58,6 +66,9 @@ export default function Column({ column, tasks = [], onAddTask, onTaskClick }) {
                   task={task}
                   index={index}
                   onClick={onTaskClick}
+                  isSelectMode={isSelectMode}
+                  isSelected={selectedTaskIds.includes(task._id)}
+                  onToggleSelect={onToggleSelectTask}
                 />
               ))
             )}

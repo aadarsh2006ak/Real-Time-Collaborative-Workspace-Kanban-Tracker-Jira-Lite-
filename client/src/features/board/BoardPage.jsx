@@ -1,4 +1,3 @@
-// client/src/features/board/BoardPage.jsx
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -12,11 +11,23 @@ import {
   BarChart2,
   FilterX,
   Clock,
-  Users,
+  Download,
+  CheckSquare,
+  Square,
+  Trash2,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { fetchProjectById, selectProjectById } from '../projects/projectsSlice';
-import { fetchTasks, createTask, moveTask } from '../tasks/tasksSlice';
-import { selectTasksByColumn } from '../tasks/tasksSelectors';
+import {
+  fetchTasks,
+  createTask,
+  moveTask,
+  bulkMoveTasks,
+  bulkDeleteTasks,
+  bulkUpdateTasks,
+} from '../tasks/tasksSlice';
+import { selectTasksByColumn, selectAllTasks } from '../tasks/tasksSelectors';
 import { setFilter, resetFilters, addToast } from '../ui/uiSlice';
 import { useProjectSocket } from '../../hooks/useProjectSocket';
 import { calcPosition } from '../../lib/position';
@@ -25,6 +36,7 @@ import Column from './Column';
 import TaskModal from '../tasks/TaskModal';
 import ProjectSettingsModal from '../projects/ProjectSettingsModal';
 import AnalyticsModal from '../analytics/AnalyticsModal';
+import ImportExportModal from '../tasks/ImportExportModal';
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -37,6 +49,7 @@ export default function BoardPage() {
   const projectStatus = useSelector((state) => state.projects.status);
   const tasksStatus = useSelector((state) => state.tasks.status);
   const byColumn = useSelector(selectTasksByColumn);
+  const allTasks = useSelector(selectAllTasks);
   const filters = useSelector((state) => state.ui.filters);
   const onlineUsers = useSelector((state) => state.presence?.online || []);
 
@@ -46,6 +59,12 @@ export default function BoardPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+
+  // Multi-select & Bulk Action states
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
 
   // Quick task creation form states
   const [targetColumnId, setTargetColumnId] = useState('');
@@ -59,6 +78,90 @@ export default function BoardPage() {
       dispatch(fetchTasks(projectId));
     }
   }, [projectId, dispatch]);
+
+  const handleToggleSelectTask = useCallback((taskId) => {
+    setSelectedTaskIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  }, []);
+
+  const handleSelectAll = () => {
+    setSelectedTaskIds(allTasks.map((t) => t._id));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedTaskIds([]);
+  };
+
+  const handleBulkMove = async (toColumnId) => {
+    if (!toColumnId || selectedTaskIds.length === 0) return;
+    setIsBulkOperating(true);
+    const res = await dispatch(
+      bulkMoveTasks({
+        projectId,
+        taskIds: selectedTaskIds,
+        toColumnId,
+      })
+    );
+    setIsBulkOperating(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      dispatch(
+        addToast({
+          message: `Moved ${selectedTaskIds.length} tasks successfully`,
+          type: 'success',
+        })
+      );
+      setSelectedTaskIds([]);
+    }
+  };
+
+  const handleBulkPriority = async (priority) => {
+    if (!priority || selectedTaskIds.length === 0) return;
+    setIsBulkOperating(true);
+    const res = await dispatch(
+      bulkUpdateTasks({
+        projectId,
+        taskIds: selectedTaskIds,
+        updates: { priority },
+      })
+    );
+    setIsBulkOperating(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      dispatch(
+        addToast({
+          message: `Updated priority for ${selectedTaskIds.length} tasks`,
+          type: 'success',
+        })
+      );
+      setSelectedTaskIds([]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (
+      selectedTaskIds.length === 0 ||
+      !window.confirm(`Are you sure you want to delete ${selectedTaskIds.length} task(s)?`)
+    ) {
+      return;
+    }
+    setIsBulkOperating(true);
+    const res = await dispatch(
+      bulkDeleteTasks({
+        projectId,
+        taskIds: selectedTaskIds,
+      })
+    );
+    setIsBulkOperating(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      dispatch(
+        addToast({
+          message: `Deleted ${selectedTaskIds.length} tasks`,
+          type: 'success',
+        })
+      );
+      setSelectedTaskIds([]);
+    }
+  };
 
   const handleOpenAddTask = (colId) => {
     setTargetColumnId(colId);
@@ -153,7 +256,7 @@ export default function BoardPage() {
   const columns = project?.columns || [];
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white h-screen overflow-hidden">
+    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white h-screen overflow-hidden relative">
       <Navbar currentProject={project} />
 
       {/* Board Header & Filter Controls */}
@@ -269,6 +372,33 @@ export default function BoardPage() {
 
           <div className="h-5 w-px bg-slate-800 mx-1 hidden sm:block" />
 
+          {/* Multi-Select Toggle Button */}
+          <button
+            onClick={() => {
+              setIsSelectMode(!isSelectMode);
+              if (isSelectMode) setSelectedTaskIds([]);
+            }}
+            title="Toggle multi-select mode for bulk actions"
+            className={`p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
+              isSelectMode
+                ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
+                : 'bg-slate-850 hover:bg-slate-800 border-slate-750 text-slate-300 hover:text-white'
+            }`}
+          >
+            <CheckSquare className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">Select</span>
+          </button>
+
+          {/* Import / Export Button */}
+          <button
+            onClick={() => setIsImportExportOpen(true)}
+            title="Import/Export CSV & JSON"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Import/Export</span>
+          </button>
+
           {/* Analytics Button */}
           <button
             onClick={() => setIsAnalyticsOpen(true)}
@@ -319,12 +449,101 @@ export default function BoardPage() {
                   tasks={byColumn[col._id] || []}
                   onAddTask={handleOpenAddTask}
                   onTaskClick={handleTaskClick}
+                  isSelectMode={isSelectMode}
+                  selectedTaskIds={selectedTaskIds}
+                  onToggleSelectTask={handleToggleSelectTask}
                 />
               ))}
             </div>
           )}
         </div>
       </DragDropContext>
+
+      {/* Floating Bulk Action Toolbar (appears when items are selected) */}
+      {isSelectMode && selectedTaskIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 border border-blue-500/40 backdrop-blur-md rounded-2xl shadow-2xl p-3 flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-2 pl-2 pr-3 border-r border-slate-800">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-xs font-bold text-white">
+              {selectedTaskIds.length} Selected
+            </span>
+          </div>
+
+          {/* Quick Select All / None */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleSelectAll}
+              className="text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-800"
+            >
+              All
+            </button>
+            <button
+              onClick={handleDeselectAll}
+              className="text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-800"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-slate-800" />
+
+          {/* Bulk Move To Column */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 hidden sm:inline">Move:</span>
+            <select
+              disabled={isBulkOperating}
+              onChange={(e) => {
+                if (e.target.value) handleBulkMove(e.target.value);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="" disabled>
+                Destination Column
+              </option>
+              {columns.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Bulk Set Priority */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 hidden sm:inline">Priority:</span>
+            <select
+              disabled={isBulkOperating}
+              onChange={(e) => {
+                if (e.target.value) handleBulkPriority(e.target.value);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="" disabled>
+                Set Priority
+              </option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+
+          {/* Bulk Delete */}
+          <button
+            disabled={isBulkOperating}
+            onClick={handleBulkDelete}
+            title="Delete selected tasks"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        </div>
+      )}
 
       {/* Quick Create Task Modal */}
       {isCreateModalOpen && (
@@ -446,6 +665,13 @@ export default function BoardPage() {
         projectId={projectId}
         isOpen={isAnalyticsOpen}
         onClose={() => setIsAnalyticsOpen(false)}
+      />
+
+      {/* Import / Export Modal */}
+      <ImportExportModal
+        project={project}
+        isOpen={isImportExportOpen}
+        onClose={() => setIsImportExportOpen(false)}
       />
     </div>
   );

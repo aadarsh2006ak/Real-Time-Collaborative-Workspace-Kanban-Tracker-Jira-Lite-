@@ -22,7 +22,14 @@ const priorityConfig = {
   },
 };
 
-const TaskCard = React.memo(function TaskCard({ task, index, onClick }) {
+const TaskCard = React.memo(function TaskCard({
+  task,
+  index,
+  onClick,
+  isSelectMode = false,
+  isSelected = false,
+  onToggleSelect,
+}) {
   const priority = priorityConfig[task.priority] || priorityConfig.medium;
 
   return (
@@ -32,16 +39,38 @@ const TaskCard = React.memo(function TaskCard({ task, index, onClick }) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          onClick={() => onClick && onClick(task)}
-          className={`p-3.5 rounded-xl border transition-shadow shadow-md group cursor-grab active:cursor-grabbing select-none ${
-            snapshot.isDragging
+          onClick={(e) => {
+            if (isSelectMode) {
+              e.stopPropagation();
+              onToggleSelect && onToggleSelect(task._id);
+            } else {
+              onClick && onClick(task);
+            }
+          }}
+          className={`p-3.5 rounded-xl border transition-all shadow-md group cursor-grab active:cursor-grabbing select-none relative ${
+            isSelected
+              ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/40 shadow-blue-500/20'
+              : snapshot.isDragging
               ? 'bg-slate-800 border-blue-500 shadow-2xl shadow-blue-500/25 ring-2 ring-blue-500/40 scale-[1.02]'
               : 'bg-slate-850/95 border-slate-750/70 hover:border-blue-500/50 hover:bg-slate-800/90'
           }`}
         >
-          {/* Header: Key & Priority */}
+          {/* Header: Select Checkbox, Key & Priority */}
           <div className="flex items-center justify-between gap-2 mb-2 text-[11px]">
-            <span className="font-mono font-bold text-blue-400">{task.key}</span>
+            <div className="flex items-center gap-2">
+              {isSelectMode && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    onToggleSelect && onToggleSelect(task._id);
+                  }}
+                  className="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0 cursor-pointer"
+                />
+              )}
+              <span className="font-mono font-bold text-blue-400">{task.key}</span>
+            </div>
             <span
               className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-semibold ${priority.bg}`}
             >

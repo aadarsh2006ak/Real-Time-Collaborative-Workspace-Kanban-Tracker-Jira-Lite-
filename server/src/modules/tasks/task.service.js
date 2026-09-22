@@ -297,6 +297,244 @@ async function deleteTask(taskId, actorId, req = null) {
   return { message: 'Task deleted successfully' };
 }
 
+/**
+ * Export project tasks in JSON or RFC 4180 CSV format
+ */
+async function exportProjectTasks(projectId, format = 'json') {
+  const project = await Project.findById(projectId).select('name key columns').lean();
+  if (!project) {
+    throw new AppError(404, 'Project not found', 'NOT_FOUND');
+  }
+
+  const tasks = await Task.find({ project: projectId, deletedAt: null })
+    .sort({ columnId: 1, position: 1 })
+    .populate('assignees reporter', 'name email avatarUrl')
+    .lean();
+
+  const columnsMap = {};
+  (project.columns || []).forEach((c) => {
+    columnsMap[String(c._id)] = c.name;
+  });
+
+  if (format === 'csv') {
+    const { tasksToCsv } = require('./task.export');
+    return {
+      contentType: 'text/csv',
+      filename: `${project.key}-export.csv`,
+      data: tasksToCsv(tasks, columnsMap),
+    };
+  }
+
+  return {
+    contentType: 'application/json',
+    filename: `${project.key}-export.json`,
+    data: tasks.map((t) => ({
+      key: t.key,
+      title: t.title,
+      description: t.description,
+      column: columnsMap[String(t.columnId)] || 'Unknown',
+      columnId: t.columnId,
+      priority: t.priority,
+      labels: t.labels,
+      assignees: t.assignees,
+      reporter: t.reporter,
+      dueDate: t.dueDate,
+      createdAt: t.createdAt,
+    })),
+  };
+}
+
+/**
+ * Bulk import tasks with automatic sequence keys and column assignment
+ */
+async function importProjectTasks(projectId, items = [], actorId, req = null) {
+  const project = await Project.findById(projectId);
+  if (!project) {
+    throw new AppError(404, 'Project not found', 'NOT_FOUND');
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new AppError(400, 'Import payload must be a non-empty array of task items', 'INVALID_PAYLOAD');
+  }
+
+  const columnsByName = {};
+  (project.columns || []).forEach((c) => {
+    columnsByName[c.name.toLowerCase().trim()] = c._id;
+  });
+  const defaultColId = project.columns[0]?._id;
+
+  const createdTasks = [];
+
+  for (const item of items) {
+    if (!item.title || !String(item.title).trim()) continue;
+
+    // Resolve column
+    let targetColId = defaultColId;
+    if (item.columnId && project.columns.id(item.columnId)) {
+      targetColId = item.columnId;
+    } else if (item.column && columnsByName[String(item.column).toLowerCase().trim()]) {
+      targetColId = columnsByName[String(item.column).toLowerCase().trim()];
+    }
+
+    // Atomic counter increment
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      { $inc: { taskCounter: 1 } },
+      { new: true }
+    );
+
+    const taskKey = `${project.key}-${updatedProject.taskCounter}`;
+
+    const lastTask = await Task.findOne({
+      project: projectId,
+      columnId: targetColId,
+      deletedAt: null,
+    })
+      .sort({ position: -1 })
+      .select('position')
+      .lean();
+
+    const position = lastTask ? lastTask.position + GAP : GAP;
+
+    const task = await Task.create({
+      project: projectId,
+      key: taskKey,
+      title: String(item.title).trim(),
+      description: item.description ? String(item.description).trim() : '',
+      columnId: targetColId,
+      position,
+      priority: ['low', 'medium', 'high', 'urgent'].includes(item.priority)
+        ? item.priority
+        : 'medium',
+      labels: Array.isArray(item.labels)
+        ? item.labels
+        : typeof item.labels === 'string'
+        ? item.labels.split(';').map((l) => l.trim()).filter(Boolean)
+        : [],
+      assignees: [],
+      reporter: actorId,
+      dueDate: item.dueDate ? new Date(item.dueDate) : null,
+      version: 0,
+      deletedAt: null,
+    });
+
+    createdTasks.push(task);
+
+    if (req) {
+      emitToProject(req, projectId, 'task:created', { task });
+    }
+  }
+
+  await logActivity(
+    {
+      project: projectId,
+      actor: actorId,
+      type: 'TASK_CREATED',
+      meta: { bulk: true, count: createdTasks.length },
+    },
+    req
+  );
+
+  return {
+    importedCount: createdTasks.length,
+    tasks: createdTasks,
+  };
+}
+
+/**
+ * Bulk move tasks to a target column
+ */
+async function bulkMoveTasks(projectId, { taskIds, toColumnId }, actorId, req = null) {
+  const project = await Project.findById(projectId);
+  if (!project || !project.columns.id(toColumnId)) {
+    throw new AppError(400, 'Invalid destination column ID', 'BAD_COLUMN');
+  }
+
+  const lastTask = await Task.findOne({
+    project: projectId,
+    columnId: toColumnId,
+    deletedAt: null,
+  })
+    .sort({ position: -1 })
+    .select('position')
+    .lean();
+
+  let startPos = lastTask ? lastTask.position : 0;
+
+  const updatedTasks = [];
+  for (let i = 0; i < taskIds.length; i++) {
+    startPos += GAP;
+    const task = await Task.findOneAndUpdate(
+      { _id: taskIds[i], project: projectId, deletedAt: null },
+      { $set: { columnId: toColumnId, position: startPos }, $inc: { version: 1 } },
+      { new: true }
+    ).populate('assignees reporter', 'name email avatarUrl');
+
+    if (task) {
+      updatedTasks.push(task);
+      if (req) {
+        emitToProject(req, projectId, 'task:moved', { task });
+      }
+    }
+  }
+
+  await logActivity(
+    {
+      project: projectId,
+      actor: actorId,
+      type: 'TASK_MOVED',
+      meta: { bulk: true, count: updatedTasks.length, to: toColumnId },
+    },
+    req
+  );
+
+  return { updatedCount: updatedTasks.length, tasks: updatedTasks };
+}
+
+/**
+ * Bulk soft delete tasks
+ */
+async function bulkDeleteTasks(projectId, { taskIds }, actorId, req = null) {
+  await Task.updateMany(
+    { _id: { $in: taskIds }, project: projectId, deletedAt: null },
+    { $set: { deletedAt: new Date() } }
+  );
+
+  taskIds.forEach((taskId) => {
+    if (req) {
+      emitToProject(req, projectId, 'task:deleted', { taskId });
+    }
+  });
+
+  await logActivity(
+    {
+      project: projectId,
+      actor: actorId,
+      type: 'TASK_DELETED',
+      meta: { bulk: true, count: taskIds.length },
+    },
+    req
+  );
+
+  return { message: 'Tasks deleted successfully', deletedCount: taskIds.length };
+}
+
+/**
+ * Bulk update priority or labels
+ */
+async function bulkUpdateTasks(projectId, { taskIds, updates }, actorId, req = null) {
+  const allowed = {};
+  if (updates.priority) allowed.priority = updates.priority;
+  if (updates.labels) allowed.labels = updates.labels;
+
+  await Task.updateMany(
+    { _id: { $in: taskIds }, project: projectId, deletedAt: null },
+    { $set: allowed, $inc: { version: 1 } }
+  );
+
+  return { message: 'Tasks updated successfully', updatedCount: taskIds.length };
+}
+
 module.exports = {
   createTask,
   getProjectTasks,
@@ -304,4 +542,9 @@ module.exports = {
   updateTask,
   moveTask,
   deleteTask,
+  exportProjectTasks,
+  importProjectTasks,
+  bulkMoveTasks,
+  bulkDeleteTasks,
+  bulkUpdateTasks,
 };

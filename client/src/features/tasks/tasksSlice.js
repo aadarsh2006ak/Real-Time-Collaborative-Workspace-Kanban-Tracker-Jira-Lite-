@@ -60,6 +60,58 @@ export const deleteTask = createAsyncThunk('tasks/delete', async (taskId, { reje
   }
 });
 
+export const importTasks = createAsyncThunk(
+  'tasks/import',
+  async ({ projectId, tasksData }, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`/projects/${projectId}/import`, tasksData);
+      return res.data.data.tasks;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.error || { message: 'Failed to import tasks' });
+    }
+  }
+);
+
+export const bulkMoveTasks = createAsyncThunk(
+  'tasks/bulkMove',
+  async ({ projectId, taskIds, toColumnId }, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`/projects/${projectId}/tasks/bulk-move`, {
+        taskIds,
+        toColumnId,
+      });
+      return res.data.data.tasks;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.error || { message: 'Failed to move tasks in bulk' });
+    }
+  }
+);
+
+export const bulkDeleteTasks = createAsyncThunk(
+  'tasks/bulkDelete',
+  async ({ projectId, taskIds }, { rejectWithValue }) => {
+    try {
+      await api.post(`/projects/${projectId}/tasks/bulk-delete`, { taskIds });
+      return taskIds;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.error || { message: 'Failed to delete tasks in bulk' });
+    }
+  }
+);
+
+export const bulkUpdateTasks = createAsyncThunk(
+  'tasks/bulkUpdate',
+  async ({ projectId, taskIds, updates }, { dispatch, rejectWithValue }) => {
+    try {
+      await api.post(`/projects/${projectId}/tasks/bulk-update`, { taskIds, updates });
+      dispatch(fetchTasks(projectId));
+      return { taskIds, updates };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.error || { message: 'Failed to update tasks in bulk' });
+    }
+  }
+);
+
 const tasksSlice = createSlice({
   name: 'tasks',
   initialState: tasksAdapter.getInitialState({
@@ -133,6 +185,24 @@ const tasksSlice = createSlice({
       // Delete Task
       .addCase(deleteTask.fulfilled, (state, { payload }) => {
         tasksAdapter.removeOne(state, payload);
+      })
+      // Import Tasks
+      .addCase(importTasks.fulfilled, (state, { payload }) => {
+        if (Array.isArray(payload)) {
+          tasksAdapter.upsertMany(state, payload);
+        }
+      })
+      // Bulk Move Tasks
+      .addCase(bulkMoveTasks.fulfilled, (state, { payload }) => {
+        if (Array.isArray(payload)) {
+          tasksAdapter.upsertMany(state, payload);
+        }
+      })
+      // Bulk Delete Tasks
+      .addCase(bulkDeleteTasks.fulfilled, (state, { payload }) => {
+        if (Array.isArray(payload)) {
+          tasksAdapter.removeMany(state, payload);
+        }
       });
   },
 });
