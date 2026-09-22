@@ -13,12 +13,10 @@ const { requireRole } = require('../../middlewares/rbac');
 
 const router = Router();
 
-// Apply auth to all task routes
-router.use(auth);
-
 // Project-nested endpoints
 router.get(
   '/projects/:projectId/tasks',
+  auth,
   requireRole('viewer'),
   validate(getTasksFilterSchema),
   taskController.getProjectTasks
@@ -26,6 +24,7 @@ router.get(
 
 router.post(
   '/projects/:projectId/tasks',
+  auth,
   requireRole('member'),
   validate(createTaskSchema),
   taskController.createTask
@@ -34,12 +33,14 @@ router.post(
 // Project Data Export & Bulk Import
 router.get(
   '/projects/:projectId/export',
+  auth,
   requireRole('viewer'),
   taskController.exportTasks
 );
 
 router.post(
   '/projects/:projectId/import',
+  auth,
   requireRole('member'),
   taskController.importTasks
 );
@@ -47,26 +48,29 @@ router.post(
 // Bulk Task Operations
 router.post(
   '/projects/:projectId/tasks/bulk-move',
+  auth,
   requireRole('member'),
   taskController.bulkMoveTasks
 );
 
 router.post(
   '/projects/:projectId/tasks/bulk-delete',
+  auth,
   requireRole('member'),
   taskController.bulkDeleteTasks
 );
 
 router.post(
   '/projects/:projectId/tasks/bulk-update',
+  auth,
   requireRole('member'),
   taskController.bulkUpdateTasks
 );
 
 // Direct task item endpoints
-router.get('/tasks/:taskId', taskController.getTask);
-router.patch('/tasks/:taskId', validate(updateTaskSchema), taskController.updateTask);
-router.patch('/tasks/:taskId/move', validate(moveTaskSchema), taskController.moveTask);
-router.delete('/tasks/:taskId', taskController.deleteTask);
+router.get('/tasks/:taskId', auth, taskController.getTask);
+router.patch('/tasks/:taskId', auth, validate(updateTaskSchema), taskController.updateTask);
+router.patch('/tasks/:taskId/move', auth, validate(moveTaskSchema), taskController.moveTask);
+router.delete('/tasks/:taskId', auth, taskController.deleteTask);
 
 module.exports = router;

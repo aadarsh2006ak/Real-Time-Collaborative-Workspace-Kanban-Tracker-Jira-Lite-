@@ -23,6 +23,24 @@ router.get('/', (req, res) => {
   });
 });
 
+// Public Seed / Reset demo data endpoint
+router.all('/seed', async (req, res, next) => {
+  try {
+    const { seedDatabase } = require('./seed');
+    await seedDatabase({ clear: true });
+    res.json({
+      success: true,
+      message: 'Demo database seeded successfully with Siddharth, Alex, and Maya!',
+      demoUser: {
+        email: 'siddharth@example.com',
+        password: 'Password123!',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Authentication routes
 router.use('/auth', authRoutes);
 
@@ -40,24 +58,6 @@ router.use('/', activityRoutes);
 
 // Notification routes
 router.use('/notifications', notificationRoutes);
-
-// Seed / Reset demo data endpoint
-router.all('/seed', async (req, res, next) => {
-  try {
-    const { seedDatabase } = require('./seed');
-    await seedDatabase({ clear: true });
-    res.json({
-      success: true,
-      message: 'Demo database seeded successfully with Siddharth, Alex, and Maya!',
-      demoUser: {
-        email: 'siddharth@example.com',
-        password: 'Password123!',
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
 
 // Test routes for test environment
 if (process.env.NODE_ENV === 'test') {
