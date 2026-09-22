@@ -2,7 +2,7 @@
 # Deploy with 1-click on https://dashboard.render.com/blueprints
 
 services:
-  # Backend API + Socket.io Server
+  # Backend API + Socket.io Server (Web Service)
   - type: web
     name: jira-lite-server
     runtime: node
@@ -27,15 +27,13 @@ services:
         generateValue: true
       - key: CLIENT_URL
         fromService:
-          type: web
+          type: static_site
           name: jira-lite-client
           property: host
 
-  # Frontend Static Web App (Vite + React)
-  - type: web
+  # Frontend Static Web App (Static Site)
+  - type: static_site
     name: jira-lite-client
-    runtime: static
-    plan: free
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
