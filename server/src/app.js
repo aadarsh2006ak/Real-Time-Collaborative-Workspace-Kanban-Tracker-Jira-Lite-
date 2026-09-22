@@ -70,8 +70,10 @@ app.get('/healthz', (req, res) => {
 // Swagger / OpenAPI 3.0 Documentation Endpoint
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 
-// API Routes
+// API Routes (supports /api/v1, /api, and root /)
 app.use('/api/v1', routes);
+app.use('/api', routes);
+app.use('/', routes);
 
 // Error Handling
 app.use(notFound);
