@@ -30,10 +30,9 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'server/package-lock.json'
+          cache-dependency-path: 'package-lock.json'
 
-      - name: Install Server Dependencies
-        working-directory: ./server
+      - name: Install Monorepo Dependencies
         run: npm ci
 
       - name: Run Server Test Suite
@@ -61,10 +60,9 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'client/package-lock.json'
+          cache-dependency-path: 'package-lock.json'
 
-      - name: Install Client Dependencies
-        working-directory: ./client
+      - name: Install Monorepo Dependencies
         run: npm ci
 
       - name: Run Client Unit Tests
