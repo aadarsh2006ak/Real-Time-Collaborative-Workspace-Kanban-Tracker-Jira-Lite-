@@ -1,19 +1,17 @@
 // client/src/features/board/BoardPage.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  Search,
-  Plus,
-  Loader2,
-  X,
-} from 'lucide-react';
+import { DragDropContext } from '@hello-pangea/dnd';
+import { Search, Plus, Loader2, X } from 'lucide-react';
 import { fetchProjectById, selectProjectById } from '../projects/projectsSlice';
-import { fetchTasks, createTask } from '../tasks/tasksSlice';
+import { fetchTasks, createTask, moveTask } from '../tasks/tasksSlice';
 import { selectTasksByColumn } from '../tasks/tasksSelectors';
 import { setFilter, addToast } from '../ui/uiSlice';
+import { calcPosition } from '../../lib/position';
 import Navbar from '../../components/Navbar';
 import Column from './Column';
+import TaskModal from '../tasks/TaskModal';
 
 export default function BoardPage() {
   const { projectId } = useParams();
@@ -25,8 +23,10 @@ export default function BoardPage() {
   const byColumn = useSelector(selectTasksByColumn);
   const filters = useSelector((state) => state.ui.filters);
 
-  // New task modal state
+  // Modal states
+  const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [targetColumnId, setTargetColumnId] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskPriority, setTaskPriority] = useState('medium');
@@ -41,8 +41,13 @@ export default function BoardPage() {
 
   const handleOpenAddTask = (colId) => {
     setTargetColumnId(colId);
-    setIsTaskModalOpen(true);
+    setIsCreateModalOpen(true);
   };
+
+  const handleTaskClick = useCallback((task) => {
+    setSelectedTask(task);
+    setIsTaskModalOpen(true);
+  }, []);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -64,8 +69,48 @@ export default function BoardPage() {
       dispatch(addToast({ message: `Task ${res.payload.key} created!`, type: 'success' }));
       setTaskTitle('');
       setTaskDescription('');
-      setIsTaskModalOpen(false);
+      setIsCreateModalOpen(false);
     }
+  };
+
+  // Drag & Drop Handler with 0ms Optimistic UI & Automatic Rollback
+  const onDragEnd = ({ source, destination, draggableId }) => {
+    if (!destination) return;
+
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    // Filter out the dragged card from destination list to calculate neighbors correctly
+    const destList = (byColumn[destination.droppableId] || []).filter(
+      (t) => t._id !== draggableId
+    );
+
+    const before = destList[destination.index - 1];
+    const after = destList[destination.index];
+    const newPosition = calcPosition(before?.position, after?.position);
+
+    dispatch(
+      moveTask({
+        taskId: draggableId,
+        toColumnId: destination.droppableId,
+        beforeId: before?._id || null,
+        afterId: after?._id || null,
+        position: newPosition, // Used immediately by moveTask.pending for 0ms optimistic UI
+      })
+    ).then((actionResult) => {
+      if (actionResult.meta.requestStatus === 'rejected') {
+        dispatch(
+          addToast({
+            message: 'Failed to save card position. Rollback applied.',
+            type: 'error',
+          })
+        );
+      }
+    });
   };
 
   if (projectStatus === 'loading' && !project) {
@@ -151,35 +196,38 @@ export default function BoardPage() {
         </div>
       </div>
 
-      {/* Main Board View: Horizontal Scrollable Columns */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
-        {tasksStatus === 'loading' && Object.keys(byColumn).length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-            <p className="text-xs">Loading workflow columns...</p>
-          </div>
-        ) : (
-          <div className="flex gap-5 h-full items-start">
-            {columns.map((col) => (
-              <Column
-                key={col._id}
-                column={col}
-                tasks={byColumn[col._id] || []}
-                onAddTask={handleOpenAddTask}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Main Drag & Drop Board Container */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
+          {tasksStatus === 'loading' && Object.keys(byColumn).length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <p className="text-xs">Loading workflow columns...</p>
+            </div>
+          ) : (
+            <div className="flex gap-5 h-full items-start">
+              {columns.map((col) => (
+                <Column
+                  key={col._id}
+                  column={col}
+                  tasks={byColumn[col._id] || []}
+                  onAddTask={handleOpenAddTask}
+                  onTaskClick={handleTaskClick}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </DragDropContext>
 
-      {/* Create Task Modal */}
-      {isTaskModalOpen && (
+      {/* Quick Create Task Modal */}
+      {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl p-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-base font-bold text-white">Create New Task</h3>
               <button
-                onClick={() => setIsTaskModalOpen(false)}
+                onClick={() => setIsCreateModalOpen(false)}
                 className="text-slate-400 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -252,7 +300,7 @@ export default function BoardPage() {
               <div className="pt-3 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsTaskModalOpen(false)}
+                  onClick={() => setIsCreateModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800"
                 >
                   Cancel
@@ -268,6 +316,17 @@ export default function BoardPage() {
           </div>
         </div>
       )}
+
+      {/* Task Details & Edit Modal */}
+      <TaskModal
+        task={selectedTask}
+        project={project}
+        isOpen={isTaskModalOpen}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setSelectedTask(null);
+        }}
+      />
     </div>
   );
 }

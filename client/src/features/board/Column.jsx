@@ -1,4 +1,5 @@
 // client/src/features/board/Column.jsx
+import { Droppable } from '@hello-pangea/dnd';
 import { Plus, AlertTriangle } from 'lucide-react';
 import TaskCard from './TaskCard';
 
@@ -36,18 +37,34 @@ export default function Column({ column, tasks = [], onAddTask, onTaskClick }) {
         )}
       </div>
 
-      {/* Cards List */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3 min-h-[150px]">
-        {tasks.length === 0 ? (
-          <div className="h-28 border-2 border-dashed border-slate-800/80 rounded-xl flex items-center justify-center text-slate-500 text-xs font-medium">
-            No tasks in this column
+      {/* Droppable Cards Container */}
+      <Droppable droppableId={column._id}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`flex-1 overflow-y-auto p-3.5 space-y-3 min-h-[160px] transition-colors rounded-xl m-1 ${
+              snapshot.isDraggingOver ? 'bg-slate-800/40 ring-1 ring-blue-500/30' : ''
+            }`}
+          >
+            {tasks.length === 0 && !snapshot.isDraggingOver ? (
+              <div className="h-28 border-2 border-dashed border-slate-800/80 rounded-xl flex items-center justify-center text-slate-500 text-xs font-medium">
+                Drop cards here
+              </div>
+            ) : (
+              tasks.map((task, index) => (
+                <TaskCard
+                  key={task._id}
+                  task={task}
+                  index={index}
+                  onClick={onTaskClick}
+                />
+              ))
+            )}
+            {provided.placeholder}
           </div>
-        ) : (
-          tasks.map((task) => (
-            <TaskCard key={task._id} task={task} onClick={onTaskClick} />
-          ))
         )}
-      </div>
+      </Droppable>
 
       {/* Column Footer: Quick Add Button */}
       <div className="p-3 border-t border-slate-800/80">
