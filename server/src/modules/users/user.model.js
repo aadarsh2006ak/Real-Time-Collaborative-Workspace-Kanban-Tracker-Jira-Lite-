@@ -28,7 +28,6 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-// Indexes
-userSchema.index({ email: 1 });
+// Indexes are automatically defined by unique: true on email
 
 module.exports = model('User', userSchema);

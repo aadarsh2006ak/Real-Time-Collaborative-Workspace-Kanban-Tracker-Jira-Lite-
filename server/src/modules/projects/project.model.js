@@ -45,7 +45,6 @@ const projectSchema = new Schema(
 );
 
 // Indexes
-projectSchema.index({ key: 1 });
 projectSchema.index({ 'members.user': 1 });
 projectSchema.index({ owner: 1 });
 
