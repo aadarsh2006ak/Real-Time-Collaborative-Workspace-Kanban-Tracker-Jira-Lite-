@@ -8,28 +8,32 @@ export const injectStore = (s) => {
   store = s;
 };
 
-const getDefaultApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
-    return 'https://jira-lite-server.onrender.com';
+export const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
+        const raw = import.meta.env.VITE_API_URL;
+        const norm = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+        return `${norm.replace(/\/$/, '')}/api/v1`;
+      }
+      return 'https://jira-lite-server.onrender.com/api/v1';
+    }
   }
-  return 'http://localhost:5000';
+  const raw = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const norm = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+  return `${norm.replace(/\/$/, '')}/api/v1`;
 };
 
-const rawApiUrl = getDefaultApiUrl();
-const normalizedApiUrl = rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
-  ? rawApiUrl
-  : `https://${rawApiUrl}`;
-
-const baseURL = `${normalizedApiUrl.replace(/\/$/, '')}/api/v1`;
-
 export const api = axios.create({
-  baseURL,
+  baseURL: getApiBaseUrl(),
   withCredentials: true,
 });
 
-// Request Interceptor: Attach Bearer JWT and x-socket-id
+// Request Interceptor: Attach Bearer JWT, x-socket-id, and dynamically ensure runtime baseURL
 api.interceptors.request.use((config) => {
+  config.baseURL = getApiBaseUrl();
+
   const token = store?.getState()?.auth?.accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -58,7 +62,7 @@ api.interceptors.response.use(
 
       try {
         refreshingPromise ??= axios
-          .post(`${baseURL}/auth/refresh`, null, { withCredentials: true })
+          .post(`${getApiBaseUrl()}/auth/refresh`, null, { withCredentials: true })
           .then((res) => {
             const newAccessToken = res.data.data.accessToken;
             store?.dispatch({ type: 'auth/tokenRefreshed', payload: newAccessToken });
@@ -72,11 +76,11 @@ api.interceptors.response.use(
             refreshingPromise = null;
           });
 
-        const newToken = await refreshingPromise;
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        const newAccessToken = await refreshingPromise;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
-      } catch (err) {
-        return Promise.reject(err);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
       }
     }
 

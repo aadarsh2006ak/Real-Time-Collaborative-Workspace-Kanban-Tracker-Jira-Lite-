@@ -5,21 +5,25 @@ let socket = null;
 
 export const getSocket = () => socket;
 
-const getDefaultApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
-    return 'https://jira-lite-server.onrender.com';
+export const getSocketServerUrl = () => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
+        const raw = import.meta.env.VITE_API_URL;
+        return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+      }
+      return 'https://jira-lite-server.onrender.com';
+    }
   }
-  return 'http://localhost:5000';
+  const raw = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
 };
 
 export function connectSocket(getToken) {
   if (socket) return socket;
 
-  const rawApiUrl = getDefaultApiUrl();
-  const serverUrl = rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
-    ? rawApiUrl
-    : `https://${rawApiUrl}`;
+  const serverUrl = getSocketServerUrl();
 
   socket = io(serverUrl, {
     auth: (cb) => {
