@@ -5,10 +5,18 @@ let socket = null;
 
 export const getSocket = () => socket;
 
+const getDefaultApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+    return 'https://jira-lite-server.onrender.com';
+  }
+  return 'http://localhost:5000';
+};
+
 export function connectSocket(getToken) {
   if (socket) return socket;
 
-  const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const rawApiUrl = getDefaultApiUrl();
   const serverUrl = rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
     ? rawApiUrl
     : `https://${rawApiUrl}`;

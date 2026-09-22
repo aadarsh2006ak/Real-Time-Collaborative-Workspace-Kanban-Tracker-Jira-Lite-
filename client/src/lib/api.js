@@ -8,7 +8,15 @@ export const injectStore = (s) => {
   store = s;
 };
 
-const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getDefaultApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+    return 'https://jira-lite-server.onrender.com';
+  }
+  return 'http://localhost:5000';
+};
+
+const rawApiUrl = getDefaultApiUrl();
 const normalizedApiUrl = rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
   ? rawApiUrl
   : `https://${rawApiUrl}`;
