@@ -2,6 +2,7 @@
 const { Router } = require('express');
 
 const authRoutes = require('./modules/auth/auth.routes');
+const projectRoutes = require('./modules/projects/project.routes');
 
 const router = Router();
 
@@ -20,6 +21,9 @@ router.get('/', (req, res) => {
 
 // Authentication routes
 router.use('/auth', authRoutes);
+
+// Project routes
+router.use('/projects', projectRoutes);
 
 // Test routes for test environment
 if (process.env.NODE_ENV === 'test') {
