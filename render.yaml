@@ -26,10 +26,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: jira-lite-client
-          property: host
+        value: https://jira-lite-client.onrender.com
 
   # Frontend Static Web App (Static Site on Render)
   - type: web
@@ -44,7 +41,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: jira-lite-server
-          property: host
+        value: https://jira-lite-server.onrender.com

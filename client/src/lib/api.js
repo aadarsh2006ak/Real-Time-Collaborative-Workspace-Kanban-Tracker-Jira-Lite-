@@ -9,18 +9,30 @@ export const injectStore = (s) => {
 };
 
 export const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && host !== '127.0.0.1') {
-      if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
-        const raw = import.meta.env.VITE_API_URL;
-        const norm = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
-        return `${norm.replace(/\/$/, '')}/api/v1`;
-      }
-      return 'https://jira-lite-server.onrender.com/api/v1';
+  let raw = import.meta.env.VITE_API_URL;
+
+  // Resolve Render private hostname or missing/local hostname in browser
+  if (
+    !raw ||
+    raw === 'jira-lite-server' ||
+    raw === 'http://jira-lite-server' ||
+    raw === 'https://jira-lite-server' ||
+    (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com') && raw.includes('localhost'))
+  ) {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+      raw = 'https://jira-lite-server.onrender.com';
+    } else {
+      raw = raw || 'http://localhost:5000';
     }
   }
-  const raw = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  // Ensure public FQDN if on onrender.com
+  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+    if (!raw.includes('.onrender.com') && !raw.includes('.')) {
+      raw = `https://${raw.replace(/^https?:\/\//, '').replace(/\/$/, '')}.onrender.com`;
+    }
+  }
+
   const norm = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
   return `${norm.replace(/\/$/, '')}/api/v1`;
 };
