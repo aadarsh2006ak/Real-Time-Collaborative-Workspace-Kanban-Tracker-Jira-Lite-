@@ -18,34 +18,38 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: false,
   })
 );
 app.use(compression());
 
-const isAllowedOrigin = (origin) => {
-  if (!origin) return true;
-  if (
-    origin === env.CLIENT_URL ||
-    origin.endsWith('.onrender.com') ||
-    origin.includes('localhost') ||
-    origin.includes('127.0.0.1')
-  ) {
-    return true;
+// Explicit Cross-Origin Resource Sharing (CORS) Middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
-  return true;
-};
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-socket-id, Cache-Control, Pragma'
+  );
+  res.setHeader('Access-Control-Expose-Headers', 'Authorization, Set-Cookie, x-socket-id');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (isAllowedOrigin(origin)) {
-        return callback(null, origin || true);
-      }
-      return callback(null, true);
-    },
+    origin: (origin, callback) => callback(null, origin || true),
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-socket-id', 'x-requested-with'],
   })
 );
 app.use(express.json({ limit: '1mb' }));
